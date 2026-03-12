@@ -5,6 +5,23 @@
 
 ---
 
+## [0.10.0] — 2026-03-12
+
+### Added
+- `detectors/d008_passive_voice.py` v0.1.0: D008 PASSIVE_WITHOUT_AGENT — страдательный залог без агента в нормативных секциях. EN: modal + be + past participle (~70 irregular + suffix heuristics). RU: должен/обязан/необходимо + быть? + краткое причастие. Agent detection: EN «by <noun>», RU творительный падеж. Safe passives list (EN ~20, RU ~9).
+- `fixtures/d008/`: 6 fixture-файлов (tc1–tc6) — passive EN, passive RU, with agent EN, with agent RU, active voice, explanatory.
+
+### Changed
+- `run_audit.py` v0.10.0: добавлен D008 в pipeline (8 детекторов).
+- `calibration/calibrate.py`: добавлен D008 в harness.
+- `detector_matrix.md` v0.10.0: добавлен D008, обновлена сводная таблица.
+
+### Verified
+- Corpus: `doc_apigw_messy.md` 6 findings (все TP: shall be applied/enabled/implemented/encrypted/enforced/deployed), остальные 9: 0.
+- 6 fixtures: tc1 5 TP, tc2 4 TP, tc3–tc6 0 findings (agent present / active voice / explanatory).
+
+---
+
 ## [0.9.0] — 2026-03-12
 
 ### Added

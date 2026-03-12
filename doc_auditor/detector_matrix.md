@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.9.0
+# Detector Matrix — doc_auditor v0.10.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -70,6 +70,25 @@
 
 ---
 
+## D008 · PASSIVE_WITHOUT_AGENT
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d008_passive_voice.py` v0.1.0 |
+| **Класс дефекта** | PASSIVE_WITHOUT_AGENT |
+| **Trigger basis** | Regex: EN `(shall\|must\|should\|will\|can\|may) be <past_participle>`, RU `(должен\|должна\|должно\|должны\|обязан\|необходимо) быть? <краткое причастие>`. Только при отсутствии агента. |
+| **Severity rules** | Всегда HIGH (только normative секции). |
+| **Confidence rules** | EN: shall/must → HIGH, should/will/can/may → MEDIUM. RU: всегда MEDIUM. |
+| **Suppression** | 1) Только normative секции — decision_record, explanatory, suppressed, unknown → skip. 2) Agent detection: EN `by <det> <noun>` в окне +60 chars, RU творительный падеж (-ом/-ем/-ой/-ью/-ами) в окне ±30/+60 chars. 3) Safe passives list: EN ~20 идиоматических (considered, required, defined, specified...), RU ~9 (определён, описан, рекомендован...). 4) Block-level + inline + heading suppression. |
+| **Section-role dependence** | Строгая: ТОЛЬКО normative. |
+| **Past participle heuristics** | EN: -ed/-ied/-ted/-sed + ~70 irregular forms. RU: краткие причастия -ан(а/о/ы)/-ен(а/о/ы)/-ирован(а/о/ы)/-ит(а/о/ы)/-ят(а/о/ы). |
+| **Fixtures** | `fixtures/d008/tc1_passive_en.md` (5 TP), `tc2_passive_ru.md` (4 TP), `tc3_with_agent_en.md` (0), `tc4_with_agent_ru.md` (0), `tc5_active_voice.md` (0), `tc6_explanatory.md` (0). |
+| **Known edge cases** | Safe passives list конечен — некоторые идиоматические passive могут дать FP. RU краткие причастия пересекаются с краткими прилагательными (доступен ≠ причастие). Irregular EN past participles list может быть неполным. |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | `doc_apigw_messy.md`: 6 (все TP — shall be applied/enabled/implemented/encrypted/enforced/deployed), остальные 9: 0. |
+
+---
+
 ## D009 · COMPOSITE_REQUIREMENT
 
 | Параметр | Значение |
@@ -137,6 +156,7 @@
 | D002 | ESCAPE_CLAUSE | HIGH (всегда) | HIGH / MEDIUM (по паттерну) | Нет (только suppression) | block-level + inline + heading |
 | D004 | OPEN_ENDED_LIST | HIGH (normative heading) / MEDIUM (default) | HIGH (всегда) | Частичная (свои heuristics) | block-level + inline + heading |
 | D005 | PLACEHOLDER | CRITICAL (всегда) | HIGH / MEDIUM (по паттерну) | Нет | block-level + inline + heading |
+| D008 | PASSIVE_WITHOUT_AGENT | HIGH (всегда, только normative) | HIGH (shall/must) / MEDIUM (остальные) | Строгая (ТОЛЬКО normative) | block-level + inline + heading + role skip + agent detection + safe passives |
 | D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
 | D012 | AMBIGUOUS_REFERENCE | HIGH (normative) / MEDIUM (rest) | MEDIUM (modal/multi-pronoun) / LOW (skip) | Полная (4 роли, explanatory skip) | block-level + inline + heading + role skip + pronoun filters |
 | D018 | ADR_ANTIPATTERN | HIGH (missing sections) / MEDIUM (thin, outcome_only) | HIGH / MEDIUM (по подтипу) | Нет (ADR-level, не section-role) | ADR detection gate + block-level + inline |

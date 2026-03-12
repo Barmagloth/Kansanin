@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.9.0
+# version: 0.10.0
 """
 CLI-точка входа.
 Usage: python run_audit.py <file> [--json] [--out findings.json]
                                   [--show-suppressed] [--no-allowlist]
 
+v0.10.0: D008 PASSIVE_WITHOUT_AGENT detector.
 v0.9.0: D012 AMBIGUOUS_REFERENCE detector.
 v0.8.0: D018 ADR_ANTIPATTERN detector.
 v0.7.0: D009 COMPOSITE_REQUIREMENT detector.
@@ -31,8 +32,9 @@ from detectors.d005_placeholder    import detect as detect_d005
 from detectors.d009_composite_requirements import detect as detect_d009
 from detectors.d018_adr_antipatterns import detect as detect_d018
 from detectors.d012_ambiguous_references import detect as detect_d012
+from detectors.d008_passive_voice import detect as detect_d008
 
-_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d009, detect_d012, detect_d018]
+_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d008, detect_d009, detect_d012, detect_d018]
 
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 _SEV_ICON  = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪"}
@@ -82,7 +84,7 @@ def print_report(
     allowlist: Allowlist | None = None,
 ) -> None:
     print(f"\n{'─'*62}")
-    print(f"  Doc-Auditor v0.9 · {doc_path.name}")
+    print(f"  Doc-Auditor v0.10 · {doc_path.name}")
     print(f"{'─'*62}")
 
     # allowlist summary

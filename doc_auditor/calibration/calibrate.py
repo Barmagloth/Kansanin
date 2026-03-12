@@ -36,8 +36,9 @@ from detectors.d004_open_ended_lists import detect as d004
 from detectors.d009_composite_requirements import detect as d009
 from detectors.d018_adr_antipatterns import detect as d018
 from detectors.d012_ambiguous_references import detect as d012
+from detectors.d008_passive_voice import detect as d008
 
-_DETECTORS = [d001, d005, d002, d004, d009, d012, d018]
+_DETECTORS = [d001, d005, d002, d004, d008, d009, d012, d018]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
