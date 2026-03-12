@@ -1,1 +1,3 @@
 __pycache__/
+doc_auditor/calibration/corpus/calibration_raw_*.json
+doc_auditor/calibration/corpus/calibration_labeled_*.json

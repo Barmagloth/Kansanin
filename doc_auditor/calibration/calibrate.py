@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # calibration/calibrate.py
-# version: 0.1.0
+# version: 0.2.0
 """
 Калибровочный harness.
 
@@ -29,11 +29,12 @@ sys.path.insert(0, str(_ROOT))
 
 from markdown_ingest import ingest_markdown
 from document_model import Finding
+from detectors.d001_vagueness import detect as d001
 from detectors.d005_placeholder import detect as d005
 from detectors.d002_escape_clauses import detect as d002
 from detectors.d004_open_ended_lists import detect as d004
 
-_DETECTORS = [d005, d002, d004]
+_DETECTORS = [d001, d005, d002, d004]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 

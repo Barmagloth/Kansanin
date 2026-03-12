@@ -5,6 +5,17 @@
 
 ---
 
+## [0.5.1] — 2026-03-12
+
+### Added
+- `evaluation_summary_v0_5_0.md`: полная evaluation — 10 документов, 80 findings, 0 FP на реальном корпусе.
+
+### Changed
+- `calibration/calibrate.py` v0.2.0: добавлен D001 VAGUENESS в harness (был только D002+D004+D005).
+- `PROJECT_CONTEXT.md`: обновлён раздел «Что открыто», добавлены evaluation и baseline в структуру.
+
+---
+
 ## [0.5.0] — 2026-03-12
 
 ### Changed

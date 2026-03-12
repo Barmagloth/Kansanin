@@ -56,8 +56,10 @@ doc_auditor/
 │   ├── generate_report.py
 │   ├── field_calibration_report_v0_1.md
 │   └── corpus/                # реальные + синтетические документы
-├── detector_matrix.md         # source of truth: поведение каждого детектора
-├── baseline_v0_4_x.md         # baseline v0.4.x (superseded by v0.5.0)
+├── detector_matrix.md           # source of truth: поведение каждого детектора
+├── baseline_v0_4_x.md           # baseline v0.4.x (superseded by v0.5.0)
+├── baseline_v0_5_x.md           # baseline v0.5.x (текущий)
+├── evaluation_summary_v0_5_0.md # evaluation: корпус, precision, рекомендации
 └── CHANGELOG.md
 ```
 
@@ -189,9 +191,10 @@ graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1
 ## Что открыто / следующие шаги
 
 **Стабилизация (текущий приоритет):**
-- Обновить `baseline_v0_4_x.md` → `baseline_v0_5_x.md` (после рефакторинга)
-- Собрать Evaluation summary по актуальной архитектуре
+- ✅ `baseline_v0_5_x.md` — зафиксирован
+- ✅ `evaluation_summary_v0_5_0.md` — собран (80 findings, 0 FP на реальных)
 - Реализовать allowlist (global / per-project / per-document)
+- Расширить корпус реальных документов (6/10 → нужно ≥ 10 для Tier-2 entry)
 
 **Pending fixes (низкий приоритет):**
 - C-6: уточнить heading heuristics — «ключевые принципы» → explanatory
