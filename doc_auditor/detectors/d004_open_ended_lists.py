@@ -1,5 +1,5 @@
 # detectors/d004_open_ended_lists.py
-# version: 0.1.0
+# version: 0.1.1
 """
 D004 · OPEN_ENDED_LIST — Незавершённые перечисления.
 
@@ -14,8 +14,8 @@ Confidence: high
 from __future__ import annotations
 import re
 from dataclasses import dataclass
-from markdown_ingest import is_suppressed_heading
-from document_model import Document, Finding, Severity, Confidence
+from normalize.suppression import is_suppressed_heading
+from models.canonical import Document, Finding, Severity, Confidence
 
 _REMEDIATION = (
     "Закрыть перечисление: перечислить все допустимые варианты явно "

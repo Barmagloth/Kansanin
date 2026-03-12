@@ -1,5 +1,5 @@
 # detectors/d001_vagueness.py
-# version: 0.1.0
+# version: 0.1.1
 """
 D001 · VAGUENESS — Расплывчатые формулировки.
 
@@ -23,8 +23,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from document_model import Document, Finding, Severity, Confidence
-from section_roles import SectionRole, classify_heading, is_suppressed_heading
+from models.canonical import Document, Finding, Severity, Confidence
+from normalize.suppression import SectionRole, classify_heading, is_suppressed_heading
 
 _VOCAB_DIR = Path(__file__).parent
 _RU_VOCAB  = _VOCAB_DIR / "d001_vague_terms_ru.txt"

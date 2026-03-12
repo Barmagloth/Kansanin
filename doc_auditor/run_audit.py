@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.3.0
+# version: 0.5.0
 """
 CLI-точка входа.
-Usage: python run_audit.py <file.md> [--json] [--out findings.json]
+Usage: python run_audit.py <file> [--json] [--out findings.json]
 
-v0.3.0: добавлен D001 VAGUENESS; section_role и term_category в отчёт.
+v0.5.0: multi-format pipeline (ingest → normalize → detect).
+         Формат определяется автоматически по расширению.
 """
 from __future__ import annotations
 import argparse
@@ -15,12 +16,13 @@ from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from markdown_ingest import ingest_markdown
-from document_model import Finding
-from detectors.d001_vagueness   import detect as detect_d001
+from ingest.registry import ingest_file
+from normalize.document_builder import build_document
+from models.canonical import Finding
+from detectors.d001_vagueness      import detect as detect_d001
 from detectors.d002_escape_clauses import detect as detect_d002
 from detectors.d004_open_ended_lists import detect as detect_d004
-from detectors.d005_placeholder import detect as detect_d005
+from detectors.d005_placeholder    import detect as detect_d005
 
 _ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005]
 
@@ -29,7 +31,8 @@ _SEV_ICON  = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵
 
 
 def run(path: Path) -> list[Finding]:
-    doc = ingest_markdown(path)
+    raw = ingest_file(path)
+    doc = build_document(raw)
     findings: list[Finding] = []
     for det in _ALL_DETECTORS:
         findings.extend(det(doc))
@@ -39,7 +42,7 @@ def run(path: Path) -> list[Finding]:
 
 def print_report(findings: list[Finding], doc_path: Path) -> None:
     print(f"\n{'─'*62}")
-    print(f"  Doc-Auditor v0.3 · {doc_path.name}")
+    print(f"  Doc-Auditor v0.5 · {doc_path.name}")
     print(f"{'─'*62}")
 
     if not findings:

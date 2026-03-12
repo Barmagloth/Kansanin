@@ -1,5 +1,5 @@
 # detectors/d005_placeholder.py
-# version: 0.1.0
+# version: 0.1.1
 """
 D005 · PLACEHOLDER — Заглушки и неполные ссылки.
 
@@ -17,8 +17,8 @@ Confidence: high / medium (зависит от паттерна)
 from __future__ import annotations
 import re
 from dataclasses import dataclass
-from markdown_ingest import is_suppressed_heading
-from document_model import Document, Finding, Sentence, Severity, Confidence
+from normalize.suppression import is_suppressed_heading
+from models.canonical import Document, Finding, Sentence, Severity, Confidence
 
 # ─── паттерны ────────────────────────────────────────────────────────────────
 
