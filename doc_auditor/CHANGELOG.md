@@ -5,6 +5,23 @@
 
 ---
 
+## [0.9.0] — 2026-03-12
+
+### Added
+- `detectors/d012_ambiguous_references.py` v0.1.0: D012 AMBIGUOUS_REFERENCE — неоднозначные местоимения с ≥2 candidate nouns в окне ±1 предложение. 4 стадии: pronoun detection → noun extraction → ambiguity heuristic → severity. EN + RU. Pronoun filters: expletive it, conjunction/relative that, demonstrative adjectives, «its own».
+- `fixtures/d012/`: 6 fixture-файлов (tc1–tc6) — ambiguous EN, ambiguous RU, clean EN, clean RU, demonstrative adj, conjunction that.
+
+### Changed
+- `run_audit.py` v0.9.0: добавлен D012 в pipeline (7 детекторов).
+- `calibration/calibrate.py`: добавлен D012 в harness.
+- `detector_matrix.md` v0.9.0: добавлен D012, обновлена сводная таблица.
+
+### Verified
+- Corpus: GB_arch 3 (borderline), adr_monorepo 2, adr_programming_languages 1, остальные 7: 0. Total D012: 6 findings, все MEDIUM/MEDIUM.
+- 6 fixtures: tc1 5 TP, tc2 3 TP, tc3–tc6 0 findings (negative cases).
+
+---
+
 ## [0.8.0] — 2026-03-12
 
 ### Added

@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-12
-# Версия пакета: v0.8.0
+# Версия пакета: v0.9.0
 
 ---
 
@@ -38,13 +38,14 @@ doc_auditor/
 │   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
 │   ├── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
 │   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.1.0)
+│   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.1.0)
 │   └── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.1.0)
 ├── allowlist/
 │   ├── engine.py              # 3-level allowlist engine (v0.2.0)
 │   ├── schema.py              # schema validation (v0.1.0)
 │   └── validate_allowlist.py  # CLI validator (v0.1.0)
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.8.0)
+├── run_audit.py               # CLI точка входа (v0.9.0)
 ├── document_model.py          # backward-compat shim → models.canonical
 ├── markdown_ingest.py         # backward-compat shim → ingest + normalize
 ├── section_roles.py           # backward-compat shim → normalize.suppression
@@ -57,6 +58,7 @@ doc_auditor/
 │   ├── suppression_vagueness.md
 │   ├── sentence_split_edge_cases.md
 │   ├── expected_vagueness.json
+│   ├── d012/                   # 6 fixture-файлов для D012 ambiguous references
 │   └── d018/                   # 8 fixture-файлов для D018 ADR antipatterns
 ├── calibration/
 │   ├── calibrate.py           # harness для прогона корпуса + разметки TP/FP
@@ -113,11 +115,12 @@ python calibration/calibrate.py calibration/corpus/ --report  # отчёт
 | ID | Класс | Статус |
 |---|---|---|
 | D009 | COMPOSITE_REQUIREMENT | ✅ v0.1.0 (verb heuristics, только normative) |
+| D012 | AMBIGUOUS_REFERENCE | ✅ v0.1.0 (pronoun + noun heuristics, modal escalation) |
 | D018 | ADR_ANTIPATTERN | ✅ v0.1.0 (5 structural checks, dual ADR detection) |
 
 ### Эшелон 2 — Tier 2 (NLP) — не начат
 D008 PASSIVE_WITHOUT_AGENT, D010 READABILITY,
-D011 TEMPLATE_NON_CONFORMANCE, D012 PRONOUN_AMBIGUITY
+D011 TEMPLATE_NON_CONFORMANCE
 
 ### Эшелон 3 — Tier 3 (LLM) — не начат
 D013 CONTRADICTION, D014 INCOMPLETENESS, D015 IMPLEMENTATION_BIAS,
@@ -228,7 +231,9 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 - C-8: поддержать нумерованные секции без `#` при ингесте
 
 **Следующий детектор-кандидат:**
-- D012 Vague Pronouns / Ambiguous References (локальный текст)
+- D008 Passive Voice without Agent (нормативное качество)
+- D010 Readability / complexity (мягкий quality layer)
+- D012 v2: улучшенная RU noun extraction, coreference heuristics
 - D018 v2: lazy alternatives markers, cross-ADR checks
 
 **Условие входа в Tier 2 (NLP):**

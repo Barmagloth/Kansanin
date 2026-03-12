@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.8.0
+# Detector Matrix — doc_auditor v0.9.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -88,6 +88,26 @@
 
 ---
 
+## D012 · AMBIGUOUS_REFERENCE
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d012_ambiguous_references.py` v0.1.0 |
+| **Класс дефекта** | AMBIGUOUS_REFERENCE |
+| **Trigger basis** | Местоимения (EN: it/this/that/these/those/they/them/its; RU: это/этот/эта/эти/оно/они/его/её/их + падежные формы) в контексте с ≥2 candidate nouns в окне ±1 предложение. 4 стадии: pronoun detection → noun phrase extraction → ambiguity heuristic → severity/confidence. |
+| **Severity rules** | NORMATIVE → HIGH. DECISION_RECORD / UNKNOWN → MEDIUM. EXPLANATORY / SUPPRESSED → skip. |
+| **Confidence rules** | MEDIUM: при наличии модального глагола ИЛИ ≥2 ambiguous pronouns в предложении. LOW (skip): без модального и с одним pronoun. |
+| **Suppression** | 1) Explanatory секции — полный skip. 2) Suppressed секции — skip. 3) Block-level + inline через `document_builder`. 4) `is_suppressed_heading()`. |
+| **Section-role dependence** | Полная (4 роли). Explanatory skip, suppressed skip. |
+| **Noun extraction** | EN: determiner + noun, proper nouns (capitalized multi-word), tech noun list (~60 слов). RU: suffix heuristics (-ция/-ние/-ство/-тель/-мент и т.д.) + explicit tech noun stems (~40 stems с inflection). |
+| **Pronoun filters** | EN: expletive «it» (sentence-start, «make it ADJ»), conjunction «that» (+ subject), relative «that» (+ verb), demonstrative adj (this/that/these/those + noun), «its own». RU: «данный/указанный» исключены из pronoun list (слишком часто = adjective). |
+| **Fixtures** | `fixtures/d012/tc1_ambiguous_en.md` (5 TP), `tc2_ambiguous_ru.md` (3 TP), `tc3_clean_en.md` (0), `tc4_clean_ru.md` (0), `tc5_demonstrative_adj.md` (0), `tc6_conjunction_that.md` (0). |
+| **Known edge cases** | RU noun extraction catches inflected forms but may over-count (e.g. «его семантика... его диапазон» с одним антецедентом). EN tech noun list конечен. Relative «that» + verb filter may over-suppress (verbs outside the list). |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | `GB_arch.md`: 3 (borderline: двойное «его», «это»+модальный), `adr_monorepo.md`: 2, `adr_programming_languages.md`: 1, остальные 7: 0. |
+
+---
+
 ## D018 · ADR_ANTIPATTERN
 
 | Параметр | Значение |
@@ -118,6 +138,7 @@
 | D004 | OPEN_ENDED_LIST | HIGH (normative heading) / MEDIUM (default) | HIGH (всегда) | Частичная (свои heuristics) | block-level + inline + heading |
 | D005 | PLACEHOLDER | CRITICAL (всегда) | HIGH / MEDIUM (по паттерну) | Нет | block-level + inline + heading |
 | D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
+| D012 | AMBIGUOUS_REFERENCE | HIGH (normative) / MEDIUM (rest) | MEDIUM (modal/multi-pronoun) / LOW (skip) | Полная (4 роли, explanatory skip) | block-level + inline + heading + role skip + pronoun filters |
 | D018 | ADR_ANTIPATTERN | HIGH (missing sections) / MEDIUM (thin, outcome_only) | HIGH / MEDIUM (по подтипу) | Нет (ADR-level, не section-role) | ADR detection gate + block-level + inline |
 
 ---
