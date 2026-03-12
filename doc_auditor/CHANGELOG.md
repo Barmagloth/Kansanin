@@ -5,6 +5,16 @@
 
 ---
 
+## [0.13.0] — 2026-03-12
+
+### Added — Sprint C: README + Positioning + GitLab CI
+
+- **README.md**: Full product README with positioning, quickstart, policy gate examples, detector table, architecture overview, pre-commit/GitHub Actions/GitLab CI instructions, allowlist docs, "Why not Vale" section, non-goals.
+- **`.gitlab-ci.kansanin.yml`**: Includable GitLab CI template. MR-scoped audit on changed .md files, branch-scoped on target paths. Configurable via `KANSANIN_FAIL_ON` and `KANSANIN_TARGET_PATHS` variables. JSON artifact + codequality report.
+- Tagline: "Static analysis for engineering specifications and ADRs."
+
+---
+
 ## [0.12.0] — 2026-03-12
 
 ### Added — Pre-commit hook

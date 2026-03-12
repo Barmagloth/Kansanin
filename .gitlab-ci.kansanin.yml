@@ -1,0 +1,78 @@
+# Kansanin — GitLab CI/CD template
+# Policy gate for engineering documents.
+#
+# Usage: include this template in your .gitlab-ci.yml:
+#
+#   include:
+#     - remote: 'https://raw.githubusercontent.com/Barmagloth/Kansanin/main/.gitlab-ci.kansanin.yml'
+#
+# Override variables as needed:
+#   variables:
+#     KANSANIN_FAIL_ON: "medium"
+#     KANSANIN_TARGET_PATHS: "specs/ architecture/"
+
+variables:
+  KANSANIN_FAIL_ON: "high"
+  KANSANIN_TARGET_PATHS: "docs/"
+  KANSANIN_REPO: "https://github.com/Barmagloth/Kansanin.git"
+  KANSANIN_REF: "main"
+
+kansanin:
+  stage: test
+  image: python:3.11-slim
+  rules:
+    # Run on MRs when .md files change
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "**/*.md"
+        - "docs/**"
+    # Run on default branch when .md files change
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - "**/*.md"
+        - "docs/**"
+    # Allow manual trigger
+    - when: manual
+      allow_failure: true
+  script:
+    - git clone --depth 1 --branch "$KANSANIN_REF" "$KANSANIN_REPO" /tmp/kansanin
+
+    # Discover target files
+    - |
+      if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
+        echo "MR mode: auditing changed .md files"
+        FILES=$(git diff --name-only --diff-filter=ACMR \
+          "$CI_MERGE_REQUEST_DIFF_BASE_SHA" HEAD -- '*.md' | tr '\n' ' ')
+      else
+        echo "Branch mode: auditing target paths"
+        FILES=""
+        for p in $KANSANIN_TARGET_PATHS; do
+          if [ -d "$p" ]; then
+            FILES="$FILES $(find "$p" -name '*.md' -type f | tr '\n' ' ')"
+          elif [ -f "$p" ]; then
+            FILES="$FILES $p"
+          fi
+        done
+      fi
+      FILES=$(echo "$FILES" | xargs)
+
+    # Run audit
+    - |
+      if [ -z "$FILES" ]; then
+        echo "No markdown files to audit. Skipping."
+        exit 0
+      fi
+      echo "Auditing: $FILES"
+      python /tmp/kansanin/doc_auditor/run_audit.py $FILES \
+        --fail-on "$KANSANIN_FAIL_ON" \
+        --json \
+        --out kansanin-report.json
+
+  artifacts:
+    when: always
+    paths:
+      - kansanin-report.json
+    expire_in: 30 days
+    reports:
+      # GitLab can parse the JSON for MR widgets if configured
+      codequality: kansanin-report.json
