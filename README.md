@@ -21,7 +21,7 @@ Kansanin treats engineering documents as implementation contracts, not prose. It
 | **D012** AMBIGUOUS_REFERENCE | Pronouns with 2+ possible antecedents in normative context |
 | **D018** ADR_ANTIPATTERN | Missing alternatives, rationale, consequences; thin sections |
 
-All detectors are bilingual (EN + RU), section-role aware, and confidence-gated. No ML, no LLM, no network calls. Pure regex + heuristics.
+All detectors are bilingual (EN + RU), section-role aware, and confidence-gated. The current layer is pure regex + heuristics — deterministic, reproducible, zero external dependencies. An LLM-powered analysis layer may be added later for deeper semantic checks.
 
 ---
 
@@ -259,7 +259,7 @@ Section roles (normative, explanatory, decision_record, suppressed) are classifi
 Things Kansanin deliberately does not do:
 
 - **Prose linting.** No readability scores, no style rules, no grammar checks. Use Vale for that.
-- **LLM-powered analysis.** Every finding is reproducible from the same input. No model, no temperature, no variance.
+- **LLM-powered analysis (for now).** The current detector layer is fully deterministic — same input, same output. An LLM layer for deeper semantic analysis (e.g. logic consistency, cross-reference validation) is a possible future addition, but as a separate opt-in tier, not a replacement for the deterministic base.
 - **Cross-document tracing.** Each document is audited independently. Requirement traceability matrices are a different tool.
 - **Auto-fix.** Kansanin reports defects. Fixing requirements is a human job.
 

@@ -11,7 +11,7 @@
 Входные форматы: Markdown (реализован); TXT, DOCX, PDF — подготовлен контракт ingestor-а.
 Выход: findings с evidence_span, severity, confidence, remediation_hint.
 
-Язык: Python 3.11+. Зависимости: только stdlib + regex (встроен). Нет внешних ML-зависимостей на Tier-1.
+Язык: Python 3.11+. Зависимости: только stdlib + regex (встроен). Tier-1 — regex/heuristics. LLM-tier возможен как отдельный слой.
 
 ---
 
