@@ -1,0 +1,222 @@
+[
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s002",
+    "section_heading": "Требования к производительности",
+    "sentence_id": "s002:s0",
+    "evidence_text": "быстро",
+    "evidence_span": [
+      36,
+      42
+    ],
+    "message": "Расплывчатый термин [quantitative]: «быстро» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with measurable latency/throughput target (e.g. ≤200ms p99)",
+    "matched_term": "быстро",
+    "term_category": "quantitative",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s003",
+    "section_heading": "Требования к надёжности",
+    "sentence_id": "s003:s0",
+    "evidence_text": "адекватный",
+    "evidence_span": [
+      28,
+      38
+    ],
+    "message": "Расплывчатый термин [quantitative]: «адекватный» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with measurable criterion",
+    "matched_term": "адекватный",
+    "term_category": "quantitative",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s0",
+    "evidence_text": "secure",
+    "evidence_span": [
+      24,
+      30
+    ],
+    "message": "Расплывчатый термин [quality]: «secure» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with specific security control or threat model reference",
+    "matched_term": "secure",
+    "term_category": "quality",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s1",
+    "evidence_text": "robust",
+    "evidence_span": [
+      24,
+      30
+    ],
+    "message": "Расплывчатый термин [quality]: «robust» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with explicit failure mode and recovery criterion",
+    "matched_term": "robust",
+    "term_category": "quality",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s2",
+    "evidence_text": "in a timely manner",
+    "evidence_span": [
+      21,
+      39
+    ],
+    "message": "Расплывчатый термин [process]: «in a timely manner» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with explicit SLA or deadline",
+    "matched_term": "in a timely manner",
+    "term_category": "process",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s3",
+    "evidence_text": "efficiently",
+    "evidence_span": [
+      51,
+      62
+    ],
+    "message": "Расплывчатый термин [process]: «efficiently» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with measurable efficiency metric",
+    "matched_term": "efficiently",
+    "term_category": "process",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s3",
+    "evidence_text": "scalable",
+    "evidence_span": [
+      22,
+      30
+    ],
+    "message": "Расплывчатый термин [quality]: «scalable» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with explicit scale target (RPS, nodes, data volume)",
+    "matched_term": "scalable",
+    "term_category": "quality",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s004",
+    "section_heading": "Security Requirements",
+    "sentence_id": "s004:s4",
+    "evidence_text": "reliable",
+    "evidence_span": [
+      24,
+      32
+    ],
+    "message": "Расплывчатый термин [quality]: «reliable» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with reliability target (MTBF, error rate, availability %)",
+    "matched_term": "reliable",
+    "term_category": "quality",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s005",
+    "section_heading": "Performance Requirements",
+    "sentence_id": "s005:s0",
+    "evidence_text": "quickly",
+    "evidence_span": [
+      35,
+      42
+    ],
+    "message": "Расплывчатый термин [quantitative]: «quickly» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with measurable latency target (e.g. ≤200ms p99)",
+    "matched_term": "quickly",
+    "term_category": "quantitative",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s005",
+    "section_heading": "Performance Requirements",
+    "sentence_id": "s005:s1",
+    "evidence_text": "adequate",
+    "evidence_span": [
+      25,
+      33
+    ],
+    "message": "Расплывчатый термин [quantitative]: «adequate» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with bounded quantity or condition",
+    "matched_term": "adequate",
+    "term_category": "quantitative",
+    "section_role": "normative"
+  },
+  {
+    "defect_id": "D001",
+    "defect_class": "VAGUENESS",
+    "severity": "high",
+    "confidence": "high",
+    "document_path": "fixtures/good_vagueness.md",
+    "section_id": "s005",
+    "section_heading": "Performance Requirements",
+    "sentence_id": "s005:s2",
+    "evidence_text": "sufficient",
+    "evidence_span": [
+      26,
+      36
+    ],
+    "message": "Расплывчатый термин [quantitative]: «sufficient» — не верифицируем без измеримого критерия. Усилено нормативным модальным глаголом.",
+    "remediation_hint": "replace with explicit numeric threshold",
+    "matched_term": "sufficient",
+    "term_category": "quantitative",
+    "section_role": "normative"
+  }
+]

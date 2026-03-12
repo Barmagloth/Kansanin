@@ -1,0 +1,130 @@
+# section_role_heuristics.yaml
+# version: 0.1.0
+#
+# Определяет роли секций документа по ключевым словам в заголовке.
+# Используется всеми детекторами для context-gating.
+#
+# Роли (от самой строгой к наименее строгой):
+#   normative       — требования, ограничения, критерии приёмки
+#   decision_record — ADR-секции (контекст, обоснование, следствия)
+#   explanatory     — описательные секции (обзор, предпосылки, аргументы)
+#   suppressed      — глоссарий, примеры, приложения, история
+
+roles:
+
+  normative:
+    description: >
+      Секции с нормативными утверждениями — требованиями, ограничениями,
+      критериями. Vague terms здесь — дефект.
+    keywords_ru:
+      - требовани
+      - ограничени
+      - критери
+      - приёмк
+      - спецификаци
+      - объём
+      - безопасност
+      - производительност
+      - надёжност
+      - доступност
+    keywords_en:
+      - requirement
+      - constraint
+      - criterion
+      - criteria
+      - acceptance
+      - specification
+      - scope
+      - security
+      - performance
+      - reliability
+      - availability
+      - sla
+    d001_severity: high
+    d001_confidence_boost: true   # escalate если рядом с shall/must/должен
+
+  decision_record:
+    description: >
+      ADR-секции. Vague terms менее критичны — это аналитический текст,
+      но патологические случаи всё равно фиксируем.
+    keywords_ru:
+      - решени
+      - обоснован
+      - альтернатив
+      - следстви
+      - контекст
+      - ограничени
+    keywords_en:
+      - decision
+      - rationale
+      - alternatives
+      - consequences
+      - context
+      - issue
+      - status
+      - implications
+      - positions
+      - argument
+      - assumptions
+    d001_severity: medium
+    d001_confidence_boost: false
+
+  explanatory:
+    description: >
+      Описательные секции. Vague terms — шум, подавляем или понижаем severity.
+    keywords_ru:
+      - обзор
+      - введени
+      - описани
+      - цел
+      - назначени
+      - мотивац
+      - принцип
+      - подход
+      - архитектур
+      - компонент
+      - дизайн
+      - риск
+      - следующ
+      - план
+    keywords_en:
+      - overview
+      - introduction
+      - background
+      - motivation
+      - purpose
+      - goal
+      - objective
+      - approach
+      - architecture
+      - component
+      - design
+      - risk
+      - notes
+      - summary
+      - high.level
+      - pipeline
+      - technology
+    d001_severity: low       # suppress по умолчанию; только extreme cases
+    d001_confidence_boost: false
+
+  suppressed:
+    description: >
+      Полное подавление. Детекторы не запускаются.
+    keywords_ru:
+      - пример
+      - приложени
+      - глоссари
+      - история
+      - changelog
+      - ссылк
+      - литератур
+    keywords_en:
+      - example
+      - appendix
+      - glossary
+      - changelog
+      - history
+      - references
+      - related
+      - notes        # Notes в ADR — suppressed

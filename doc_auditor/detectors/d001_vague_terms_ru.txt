@@ -1,0 +1,66 @@
+# d001_vague_terms_ru.txt
+# version: 0.1.0
+#
+# Словарь расплывчатых терминов на русском языке.
+# Формат: term [TAB] category [TAB] remediation_hint
+# Категории: quantitative | quality | process
+#
+# Правила редактирования:
+# - Добавлять леммы (начальная форма): быстрый, а не быстрого/быстрее
+# - Не добавлять слова без хотя бы одного реального FP-кейса
+# - Allowlist (домен-специфичные термины) хранится отдельно в d001_allowlist.yaml
+
+# ── quantitative vagueness ────────────────────────────────────────────────────
+быстро	quantitative	replace with measurable latency/throughput target (e.g. ≤200ms p99)
+быстрый	quantitative	replace with measurable latency/throughput target
+скоро	quantitative	replace with explicit deadline or timeframe
+оперативно	quantitative	replace with measurable response time target
+своевременно	quantitative	replace with explicit SLA or deadline
+достаточный	quantitative	replace with bounded quantity or condition
+достаточно	quantitative	replace with bounded quantity or condition
+адекватный	quantitative	replace with measurable criterion
+адекватно	quantitative	replace with measurable criterion
+приемлемый	quantitative	replace with explicit acceptance threshold
+приемлемо	quantitative	replace with explicit acceptance threshold
+разумный	quantitative	replace with explicit upper/lower bound
+разумно	quantitative	replace with explicit upper/lower bound
+минимальный	quantitative	replace with explicit numeric minimum
+максимальный	quantitative	replace with explicit numeric maximum
+значительный	quantitative	replace with measured quantity (%, ms, count)
+значительно	quantitative	replace with measured quantity
+существенный	quantitative	replace with measurable threshold
+небольшой	quantitative	replace with explicit size/count bound
+большой	quantitative	replace with explicit size/count bound
+
+# ── quality vagueness ─────────────────────────────────────────────────────────
+надёжный	quality	replace with reliability target (MTBF, error rate, availability %)
+надёжность	quality	replace with reliability target (MTBF, error rate, availability %)
+удобный	quality	replace with enumerated usability criteria or task-completion target
+удобство	quality	replace with enumerated usability criteria
+интуитивно	quality	replace with measurable learnability or task-success criterion
+гибкий	quality	replace with enumerated extension points or supported variations
+гибкость	quality	replace with enumerated extension points
+масштабируемый	quality	replace with explicit scale target (RPS, nodes, data volume)
+масштабируемость	quality	replace with explicit scale target
+производительный	quality	replace with measurable performance target
+производительность	quality	specify metric: latency / throughput / resource usage
+эффективный	quality	replace with measurable efficiency metric
+эффективность	quality	specify metric: throughput, cost, resource ratio
+простой	quality	replace with enumerated complexity constraints or task-time target
+простота	quality	replace with enumerated complexity constraints
+понятный	quality	replace with measurable comprehension criterion
+безопасный	quality	replace with specific security control or threat model reference
+качественный	quality	replace with enumerated quality attributes and thresholds
+современный	quality	specify version, standard, or release date constraint
+
+# ── process vagueness ─────────────────────────────────────────────────────────
+по мере необходимости	process	replace with explicit trigger condition or schedule
+должным образом	process	replace with specific procedure or acceptance criterion
+надлежащим образом	process	replace with specific procedure
+корректно	process	replace with enumerated correctness criteria or test cases
+правильно	process	replace with enumerated correctness criteria
+соответствующий	process	replace with explicit referenced standard or criterion
+соответственно	process	replace with explicit procedure or outcome
+регулярно	process	replace with explicit schedule (interval, trigger, deadline)
+периодически	process	replace with explicit interval or trigger
+при необходимости	process	replace with explicit condition (see also D002 ESCAPE_CLAUSE)

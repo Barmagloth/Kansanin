@@ -1,0 +1,62 @@
+# d001_vague_terms_en.txt
+# version: 0.1.0
+#
+# Vague terms vocabulary — English.
+# Format: term [TAB] category [TAB] remediation_hint
+# Categories: quantitative | quality | process
+#
+# Editing rules:
+# - Use base forms (lemmas): fast, not faster/fastest
+# - Do not add terms without at least one documented real FP case
+# - Domain-specific allowlist kept separately in d001_allowlist.yaml
+
+# ── quantitative vagueness ────────────────────────────────────────────────────
+quickly	quantitative	replace with measurable latency target (e.g. ≤200ms p99)
+fast	quantitative	replace with measurable latency/throughput target
+soon	quantitative	replace with explicit deadline or milestone
+timely	quantitative	replace with explicit SLA or deadline
+adequate	quantitative	replace with bounded quantity or condition
+sufficient	quantitative	replace with explicit numeric threshold
+appropriate	quantitative	replace with explicit criterion or standard reference
+reasonable	quantitative	replace with explicit upper/lower bound
+minimal	quantitative	replace with explicit numeric minimum
+maximum	quantitative	replace with explicit numeric maximum (if used as adj. without value)
+significant	quantitative	replace with measured quantity (%, ms, count)
+substantial	quantitative	replace with measured quantity
+considerable	quantitative	replace with explicit size/count bound
+large	quantitative	replace with explicit size/count bound
+small	quantitative	replace with explicit size/count bound
+
+# ── quality vagueness ─────────────────────────────────────────────────────────
+reliable	quality	replace with reliability target (MTBF, error rate, availability %)
+reliability	quality	specify metric: MTBF, error rate, availability %
+robust	quality	replace with explicit failure mode and recovery criterion
+user-friendly	quality	replace with enumerated usability criteria or task-completion target
+intuitive	quality	replace with measurable learnability or task-success criterion
+flexible	quality	replace with enumerated extension points or supported variations
+scalable	quality	replace with explicit scale target (RPS, nodes, data volume)
+scalability	quality	replace with explicit scale target
+performant	quality	replace with measurable performance target
+efficient	quality	replace with measurable efficiency metric (throughput, cost, resource ratio)
+simple	quality	replace with enumerated complexity constraints or task-time target
+easy	quality	replace with enumerated complexity constraints
+straightforward	quality	replace with enumerated steps or task-time target
+secure	quality	replace with specific security control or threat model reference
+modern	quality	specify version, standard, or release date constraint
+maintainable	quality	replace with explicit maintainability metric (MTTR, coupling, test coverage)
+extensible	quality	replace with enumerated extension points or plugin contracts
+
+# ── process vagueness ─────────────────────────────────────────────────────────
+properly	process	replace with specific procedure or acceptance criterion
+correctly	process	replace with enumerated correctness criteria or test cases
+appropriately	process	replace with explicit procedure or outcome
+regularly	process	replace with explicit schedule (interval, trigger, deadline)
+periodically	process	replace with explicit interval or trigger
+as needed	process	replace with explicit trigger condition (see also D002 ESCAPE_CLAUSE)
+as necessary	process	replace with explicit condition
+as appropriate	process	replace with explicit criterion
+in a timely manner	process	replace with explicit SLA or deadline
+effectively	process	replace with measurable effectiveness metric
+efficiently	process	replace with measurable efficiency metric
+seamlessly	process	replace with enumerated integration criteria
+transparently	process	replace with specific observable behaviour or audit requirement
