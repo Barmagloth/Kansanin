@@ -1,14 +1,15 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-12
-# Версия пакета: v0.4.0
+# Версия пакета: v0.5.0
 
 ---
 
 ## Что это
 
 `doc_auditor` — инструмент автоматического аудита инженерных документов (ТЗ/SRS, архитектурные документы, ADR).
-Входной формат: Markdown. Выход: findings с evidence_span, severity, confidence, remediation_hint.
+Входные форматы: Markdown (реализован); TXT, DOCX, PDF — подготовлен контракт ingestor-а.
+Выход: findings с evidence_span, severity, confidence, remediation_hint.
 
 Язык: Python 3.11+. Зависимости: только stdlib + regex (встроен). Нет внешних ML-зависимостей на Tier-1.
 
@@ -18,18 +19,29 @@
 
 ```
 doc_auditor/
-├── document_model.py          # dataclasses: Document, Section, Sentence, Finding (v0.2.0)
-├── markdown_ingest.py         # парсер md → модель (v0.3.0)
-├── section_roles.py           # классификатор ролей секций (v0.1.0)
-├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.3.0)
+├── models/
+│   ├── raw.py                 # RawBlock, RawDocument, StructureConfidence (v0.5.0)
+│   └── canonical.py           # Document, Section, Sentence, Finding (v0.5.0)
+├── ingest/
+│   ├── base.py                # BaseIngestor Protocol, IngestCapabilities (v0.5.0)
+│   ├── markdown_ingestor.py   # Markdown → RawDocument (v0.5.0)
+│   └── registry.py            # get_ingestor() по расширению (v0.5.0)
+├── normalize/
+│   ├── document_builder.py    # RawDocument → canonical Document (v0.5.0)
+│   ├── sentence_splitter.py   # разбиение на предложения (v0.5.0)
+│   └── suppression.py         # SectionRole, classify_heading (v0.5.0)
 ├── detectors/
-│   ├── d001_vagueness.py      # VAGUENESS (v0.1.0)
+│   ├── d001_vagueness.py      # VAGUENESS (v0.1.1)
 │   ├── d001_vague_terms_ru.txt
 │   ├── d001_vague_terms_en.txt
-│   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.0)
-│   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.0)
-│   └── d005_placeholder.py   # PLACEHOLDER (v0.1.0)
+│   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.1)
+│   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
+│   └── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
+├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
+├── run_audit.py               # CLI точка входа (v0.5.0)
+├── document_model.py          # backward-compat shim → models.canonical
+├── markdown_ingest.py         # backward-compat shim → ingest + normalize
+├── section_roles.py           # backward-compat shim → normalize.suppression
 ├── fixtures/
 │   ├── good_placeholders.md
 │   ├── good_escape_clauses.md
@@ -39,11 +51,14 @@ doc_auditor/
 │   ├── suppression_vagueness.md
 │   ├── sentence_split_edge_cases.md
 │   └── expected_vagueness.json
-└── calibration/
-    ├── calibrate.py           # harness для прогона корпуса + разметки TP/FP
-    ├── generate_report.py
-    ├── field_calibration_report_v0_1.md
-    └── corpus/                # реальные + синтетические документы
+├── calibration/
+│   ├── calibrate.py           # harness для прогона корпуса + разметки TP/FP
+│   ├── generate_report.py
+│   ├── field_calibration_report_v0_1.md
+│   └── corpus/                # реальные + синтетические документы
+├── detector_matrix.md         # source of truth: поведение каждого детектора
+├── baseline_v0_4_x.md         # baseline v0.4.x (superseded by v0.5.0)
+└── CHANGELOG.md
 ```
 
 ---
@@ -90,7 +105,15 @@ D016 TERMINOLOGY_INCONSISTENCY, D017 REDUNDANCY, D018 ADR_ANTIPATTERNS
 
 ## Архитектурные решения (зафиксированные)
 
-**Document model:** Document → Section → Sentence → Finding.
+**Трёхслойная архитектура (v0.5.0):**
+- `ingest/` — формат-зависимая экстракция → `RawDocument` (блоки с типами)
+- `normalize/` — `RawDocument` → canonical `Document` (секции, предложения, suppression)
+- `detectors/` — работают только с canonical-моделью, не знают о формате
+
+**Raw layer:** `RawBlock` (text, block_type, start_offset, suppressed_spans) →
+`RawDocument` (path, source_format, blocks, structure_confidence, ingest_warnings).
+
+**Canonical layer:** Document → Section → Sentence → Finding.
 `Statement` как отдельный тип — не вводить до детекторов D009/D013.
 
 **Finding fields:** defect_id, defect_class, severity, confidence, document_path,
@@ -103,16 +126,17 @@ message, remediation_hint, matched_term, term_category, section_role.
 - `explanatory` — обзор, контекст, обоснование → D001 skip
 - `suppressed` — глоссарий, примеры, приложения → все детекторы skip
 
-**Suppression зоны (все реализованы в markdown_ingest.py v0.3.0):**
-- fenced code blocks ` ``` `
-- inline code `` ` ` ``
-- blockquotes `> ...`
-- markdown table rows `| ... |`
-- checklist items `- [ ] / - [x]`
-- heading-based: glossary / example / appendix / история / changelog
+**Suppression зоны:**
+- Block-level (определяются ingestor-ом): fenced code, blockquotes, table rows
+- Inline (suppressed_spans в RawBlock): inline code, checklist markers
+- Heading-based: glossary / example / appendix / история / changelog
 
 **Suppression нумерованных заголовков:** `is_suppressed_heading()` ищет ключевое
 слово в любой позиции заголовка, не только в начале (`21. Глоссарий` → suppressed).
+
+**BaseIngestor Protocol:** `supported_extensions`, `capabilities` (IngestCapabilities),
+`ingest(path) → RawDocument`. Реализован: MarkdownIngestor. Подготовлен контракт
+для TXT, DOCX, PDF.
 
 ---
 
@@ -127,16 +151,18 @@ message, remediation_hint, matched_term, term_category, section_role.
 | ESCAPE_CLAUSE | 78% (3 FP в ADR Consequences) |
 | OPEN_ENDED_LIST | был 31% → поднят удалением `such as` и расширением explanatory heuristics |
 
-**Реальные документы — результаты:**
+**Реальные документы — результаты (v0.5.0, полный прогон D001+D002+D004+D005):**
 | Документ | Findings | Оценка |
 |---|---|---|
-| concept_v1_6.md | 1 MEDIUM D001 | «периодически» в нормативном заголовке без модального — borderline ✅ |
+| concept_v1_6.md | 1 HIGH D001 (conf:MEDIUM) | «периодически» в normative секции без модального — borderline ✅ |
 | GB_arch.md | 0 | Чистый ✅ |
-| architecture.md | 0 | Чистый ✅ |
-| graph_spec_v5_3.md | 0 (было 44 FP) | C-4 checklist fix ✅ |
-| adr_programming_languages.md | 3 MEDIUM | Borderline `etc.` ✅ |
-| adr_monorepo.md | 2 MEDIUM | Borderline `etc.` ✅ |
+| graph_spec_v5_3.md | 1 HIGH D001 (conf:MEDIUM) | «быстрый» в секции `security: "raw"` (normative по keyword). Borderline: описание сценария, не требование. Кандидат на allowlist или уточнение role heuristics. |
+| adr_programming_languages.md | 3 MEDIUM D004 | Borderline `etc.` ✅ |
+| adr_monorepo.md | 2 MEDIUM D004 | Borderline `etc.` ✅ |
 | tz_exp01_adaptive.md | 0 | Чистый ✅ |
+
+**Примечание:** architecture.md удалён из корпуса (не найден при синхронизации).
+graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1 новый D001 finding после добавления D001.
 
 **Известная проблема:** нумерованные секции без `#`-заголовков (`0)`, `1)`, `1.1.`)
 парсятся как единый `__preamble__`. Зафиксировано как C-8 (LOW priority).
@@ -162,13 +188,20 @@ message, remediation_hint, matched_term, term_category, section_role.
 
 ## Что открыто / следующие шаги
 
+**Стабилизация (текущий приоритет):**
+- Обновить `baseline_v0_4_x.md` → `baseline_v0_5_x.md` (после рефакторинга)
+- Собрать Evaluation summary по актуальной архитектуре
+- Реализовать allowlist (global / per-project / per-document)
+
 **Pending fixes (низкий приоритет):**
 - C-6: уточнить heading heuristics — «ключевые принципы» → explanatory
 - C-8: поддержать нумерованные секции без `#` при ингесте
+- graph_spec `security: "raw"` — уточнить: role heuristics или allowlist
 
-**Следующий детектор-кандидат:**
-- D003 WEAK_MODAL (should/может/следует без shall/must)
-- D007 COMPARATIVE_WITHOUT_BASELINE (быстрее чем что? лучше чего?)
+**Следующий детектор-кандидат (после стабилизации):**
+- D012 Vague Pronouns / Ambiguous References
+- D009 Composite Requirements
+- D018 ADR Antipatterns (missing alternatives / consequences / rationale)
 
 **Условие входа в Tier 2 (NLP):**
 - Tier-1 precision на реальных доках стабильна
@@ -177,6 +210,7 @@ message, remediation_hint, matched_term, term_category, section_role.
 
 **Условие входа в D001-C:**
 - Первый реальный FP из-за домен-специфичного термина зафиксирован в calibration
+- Фактически: `быстрый` в graph_spec — кандидат (borderline, не чистый FP)
 
 ---
 

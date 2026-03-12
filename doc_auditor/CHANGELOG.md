@@ -5,6 +5,27 @@
 
 ---
 
+## [0.5.0] — 2026-03-12
+
+### Changed
+- **Архитектура:** монолит разбит на три слоя: `ingest/` → `normalize/` → `detectors/`.
+- `models/raw.py` v0.5.0: RawBlock, RawDocument, StructureConfidence — формат-зависимый raw layer.
+- `models/canonical.py` v0.5.0: Document, Section, Sentence, Finding — формат-независимый canonical layer. Добавлены поля: source_format, ingest_warnings, structure_confidence.
+- `ingest/base.py` v0.5.0: BaseIngestor Protocol, IngestCapabilities.
+- `ingest/markdown_ingestor.py` v0.5.0: блочный парсер Markdown → RawDocument.
+- `ingest/registry.py` v0.5.0: маршрутизация файла по расширению.
+- `normalize/document_builder.py` v0.5.0: RawDocument → canonical Document.
+- `normalize/sentence_splitter.py` v0.5.0: разбиение на предложения (из markdown_ingest).
+- `normalize/suppression.py` v0.5.0: SectionRole, classify_heading (из section_roles.py).
+- `run_audit.py` v0.5.0: pipeline `ingest_file → build_document → detect`.
+- Детекторы v0.1.1: обновлены импорты на models.canonical + normalize.suppression.
+- `document_model.py`, `markdown_ingest.py`, `section_roles.py` → backward-compat shims.
+
+### Verified
+- Regression: OLD vs NEW — идентичный набор findings на всех 10 документах корпуса + 7 fixtures.
+
+---
+
 ## [0.4.0] — 2026-03-12
 
 ### Added

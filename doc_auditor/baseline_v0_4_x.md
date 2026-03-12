@@ -1,5 +1,9 @@
 # Baseline v0.4.x — doc_auditor
 
+> **SUPERSEDED by v0.5.0.** Архитектура разбита на ingest → normalize → detect.
+> Поведение детекторов не изменилось (verified: zero regression).
+> Актуальное состояние — в `CHANGELOG.md` и `PROJECT_CONTEXT.md`.
+
 Фиксация состояния системы. Все утверждения ниже верны для v0.4.x.
 Детали поведения каждого детектора — в `detector_matrix.md`.
 
