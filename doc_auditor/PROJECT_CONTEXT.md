@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-12
-# Версия пакета: v0.10.0
+# Версия пакета: v0.10.1
 
 ---
 
@@ -37,10 +37,10 @@ doc_auditor/
 │   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.1)
 │   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
 │   ├── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
-│   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.1.0)
+│   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.2.0)
 │   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.1.0)
-│   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.1.0)
-│   └── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.1.0)
+│   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.2.0)
+│   └── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.2.0)
 ├── allowlist/
 │   ├── engine.py              # 3-level allowlist engine (v0.2.0)
 │   ├── schema.py              # schema validation (v0.1.0)

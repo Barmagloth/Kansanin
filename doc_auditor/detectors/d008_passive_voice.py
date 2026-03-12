@@ -1,5 +1,5 @@
 # detectors/d008_passive_voice.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D008 · PASSIVE_WITHOUT_AGENT — Страдательный залог без указания агента.
 
@@ -126,10 +126,17 @@ def _is_russian(text: str) -> bool:
     return cyr > lat
 
 
+# v0.2.0: «using <noun>» as quasi-agent — "encrypted using TLS", "deployed using Helm"
+_QUASI_AGENT_EN = re.compile(
+    r"\b(?:using|via|through|with)\s+(?:the|a|an)?\s*[A-Za-z][\w-]+",
+    re.IGNORECASE,
+)
+
+
 def _has_agent_en(text: str, match_end: int) -> bool:
-    """Check if there's a 'by <agent>' within ~60 chars after passive verb."""
+    """Check if there's a 'by <agent>' or 'using <tool>' within ~60 chars after passive verb."""
     window = text[match_end:match_end + 60]
-    return bool(_AGENT_EN.search(window))
+    return bool(_AGENT_EN.search(window) or _QUASI_AGENT_EN.search(window))
 
 
 def _has_agent_ru(text: str, match_end: int) -> bool:

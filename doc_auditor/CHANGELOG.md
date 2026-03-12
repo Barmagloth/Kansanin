@@ -5,6 +5,35 @@
 
 ---
 
+## [0.10.1] — 2026-03-12
+
+### Changed — v2 hardening pass (D012, D008, D018)
+
+- `detectors/d012_ambiguous_references.py` v0.2.0:
+  - Dedup: один pronoun word per sentence → max 1 finding (was: каждый match → finding).
+  - `it's` contraction filter: «it's» → skip (не местоимение).
+  - Decision_record confidence gate ужесточён: require modal AND ≥2 distinct pronouns (was: modal OR multi_pronoun).
+  - Corpus D012: 2 findings (was 6), FP rate снижена с ~50% до ~12%.
+
+- `detectors/d008_passive_voice.py` v0.2.0:
+  - Quasi-agent detection: `using/via/through/with <noun>` в окне +60 chars.
+  - Corpus D008: 5 findings (was 6, "encrypted using TLS" filtered).
+  - Fixtures D008: tc1 4 TP (was 5).
+
+- `detectors/d018_adr_antipatterns.py` v0.2.0:
+  - THIN_THRESHOLD: 50 (was 30).
+  - Alternatives heading: +`other options`, +`рассмотренные варианты`.
+  - Consequences heading: +`impact`, +`влияни`.
+  - Rationale markers: +`given that`, +`this was chosen`, +`we chose/decided/selected ... because`, +`в связи с`, +`выбран потому/так как/ввиду`.
+
+- `detector_matrix.md` v0.10.1: обновлены D008, D012, D018 секции для v2 changes.
+
+### Verified
+- Corpus 10 docs: 88 findings (was 93). D012: 2 (was 6), D008: 5 (was 6), D018: 1 (stable).
+- All fixtures pass: D008 (4/4/0/0/0/0), D012 (3/3/0/0/0/0), D018 (0/1/1/2/1/1/0/0).
+
+---
+
 ## [0.10.0] — 2026-03-12
 
 ### Added

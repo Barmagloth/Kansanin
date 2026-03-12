@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.10.0
+# Detector Matrix — doc_auditor v0.10.1
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -74,18 +74,18 @@
 
 | Параметр | Значение |
 |---|---|
-| **Файл** | `detectors/d008_passive_voice.py` v0.1.0 |
+| **Файл** | `detectors/d008_passive_voice.py` v0.2.0 |
 | **Класс дефекта** | PASSIVE_WITHOUT_AGENT |
 | **Trigger basis** | Regex: EN `(shall\|must\|should\|will\|can\|may) be <past_participle>`, RU `(должен\|должна\|должно\|должны\|обязан\|необходимо) быть? <краткое причастие>`. Только при отсутствии агента. |
 | **Severity rules** | Всегда HIGH (только normative секции). |
 | **Confidence rules** | EN: shall/must → HIGH, should/will/can/may → MEDIUM. RU: всегда MEDIUM. |
-| **Suppression** | 1) Только normative секции — decision_record, explanatory, suppressed, unknown → skip. 2) Agent detection: EN `by <det> <noun>` в окне +60 chars, RU творительный падеж (-ом/-ем/-ой/-ью/-ами) в окне ±30/+60 chars. 3) Safe passives list: EN ~20 идиоматических (considered, required, defined, specified...), RU ~9 (определён, описан, рекомендован...). 4) Block-level + inline + heading suppression. |
+| **Suppression** | 1) Только normative секции — decision_record, explanatory, suppressed, unknown → skip. 2) Agent detection: EN `by <det> <noun>` в окне +60 chars, RU творительный падеж (-ом/-ем/-ой/-ью/-ами) в окне ±30/+60 chars. 3) v0.2.0: quasi-agent `using/via/through/with <noun>` в окне +60 chars. 4) Safe passives list: EN ~20 идиоматических (considered, required, defined, specified...), RU ~9 (определён, описан, рекомендован...). 5) Block-level + inline + heading suppression. |
 | **Section-role dependence** | Строгая: ТОЛЬКО normative. |
 | **Past participle heuristics** | EN: -ed/-ied/-ted/-sed + ~70 irregular forms. RU: краткие причастия -ан(а/о/ы)/-ен(а/о/ы)/-ирован(а/о/ы)/-ит(а/о/ы)/-ят(а/о/ы). |
-| **Fixtures** | `fixtures/d008/tc1_passive_en.md` (5 TP), `tc2_passive_ru.md` (4 TP), `tc3_with_agent_en.md` (0), `tc4_with_agent_ru.md` (0), `tc5_active_voice.md` (0), `tc6_explanatory.md` (0). |
+| **Fixtures** | `fixtures/d008/tc1_passive_en.md` (4 TP, v0.2.0: was 5, "encrypted using TLS" now filtered), `tc2_passive_ru.md` (4 TP), `tc3_with_agent_en.md` (0), `tc4_with_agent_ru.md` (0), `tc5_active_voice.md` (0), `tc6_explanatory.md` (0). |
 | **Known edge cases** | Safe passives list конечен — некоторые идиоматические passive могут дать FP. RU краткие причастия пересекаются с краткими прилагательными (доступен ≠ причастие). Irregular EN past participles list может быть неполным. |
 | **Allowlist** | Нет entries. |
-| **Corpus results** | `doc_apigw_messy.md`: 6 (все TP — shall be applied/enabled/implemented/encrypted/enforced/deployed), остальные 9: 0. |
+| **Corpus results** | `doc_apigw_messy.md`: 5 (v0.2.0: was 6, "encrypted using TLS" filtered by quasi-agent — shall be applied/enabled/implemented/enforced/deployed), остальные 9: 0. |
 
 ---
 
@@ -111,19 +111,19 @@
 
 | Параметр | Значение |
 |---|---|
-| **Файл** | `detectors/d012_ambiguous_references.py` v0.1.0 |
+| **Файл** | `detectors/d012_ambiguous_references.py` v0.2.0 |
 | **Класс дефекта** | AMBIGUOUS_REFERENCE |
 | **Trigger basis** | Местоимения (EN: it/this/that/these/those/they/them/its; RU: это/этот/эта/эти/оно/они/его/её/их + падежные формы) в контексте с ≥2 candidate nouns в окне ±1 предложение. 4 стадии: pronoun detection → noun phrase extraction → ambiguity heuristic → severity/confidence. |
 | **Severity rules** | NORMATIVE → HIGH. DECISION_RECORD / UNKNOWN → MEDIUM. EXPLANATORY / SUPPRESSED → skip. |
-| **Confidence rules** | MEDIUM: при наличии модального глагола ИЛИ ≥2 ambiguous pronouns в предложении. LOW (skip): без модального и с одним pronoun. |
+| **Confidence rules** | NORMATIVE/UNKNOWN: MEDIUM при наличии модального глагола ИЛИ ≥2 distinct ambiguous pronouns. LOW (skip) иначе. DECISION_RECORD: MEDIUM только при modal AND ≥2 distinct pronouns (v0.2.0: ужесточено). LOW (skip) иначе. |
 | **Suppression** | 1) Explanatory секции — полный skip. 2) Suppressed секции — skip. 3) Block-level + inline через `document_builder`. 4) `is_suppressed_heading()`. |
 | **Section-role dependence** | Полная (4 роли). Explanatory skip, suppressed skip. |
 | **Noun extraction** | EN: determiner + noun, proper nouns (capitalized multi-word), tech noun list (~60 слов). RU: suffix heuristics (-ция/-ние/-ство/-тель/-мент и т.д.) + explicit tech noun stems (~40 stems с inflection). |
-| **Pronoun filters** | EN: expletive «it» (sentence-start, «make it ADJ»), conjunction «that» (+ subject), relative «that» (+ verb), demonstrative adj (this/that/these/those + noun), «its own». RU: «данный/указанный» исключены из pronoun list (слишком часто = adjective). |
-| **Fixtures** | `fixtures/d012/tc1_ambiguous_en.md` (5 TP), `tc2_ambiguous_ru.md` (3 TP), `tc3_clean_en.md` (0), `tc4_clean_ru.md` (0), `tc5_demonstrative_adj.md` (0), `tc6_conjunction_that.md` (0). |
+| **Pronoun filters** | EN: expletive «it» (sentence-start, «make it ADJ»), «it's» contraction (v0.2.0), conjunction «that» (+ subject), relative «that» (+ verb), demonstrative adj (this/that/these/those + noun), «its own». RU: «данный/указанный» исключены из pronoun list (слишком часто = adjective). v0.2.0: dedup — один pronoun per sentence даёт max 1 finding. |
+| **Fixtures** | `fixtures/d012/tc1_ambiguous_en.md` (3 TP, v0.2.0: was 5, dedup reduced), `tc2_ambiguous_ru.md` (3 TP), `tc3_clean_en.md` (0), `tc4_clean_ru.md` (0), `tc5_demonstrative_adj.md` (0), `tc6_conjunction_that.md` (0). |
 | **Known edge cases** | RU noun extraction catches inflected forms but may over-count (e.g. «его семантика... его диапазон» с одним антецедентом). EN tech noun list конечен. Relative «that» + verb filter may over-suppress (verbs outside the list). |
 | **Allowlist** | Нет entries. |
-| **Corpus results** | `GB_arch.md`: 3 (borderline: двойное «его», «это»+модальный), `adr_monorepo.md`: 2, `adr_programming_languages.md`: 1, остальные 7: 0. |
+| **Corpus results** | v0.2.0: `GB_arch.md`: 2 (was 3, dedup+gate reduced), `adr_monorepo.md`: 0 (was 2, decision_record gate), `adr_programming_languages.md`: 0 (was 1, decision_record gate), остальные 7: 0. Total: 2 (was 6). |
 
 ---
 
@@ -131,7 +131,7 @@
 
 | Параметр | Значение |
 |---|---|
-| **Файл** | `detectors/d018_adr_antipatterns.py` v0.1.0 |
+| **Файл** | `detectors/d018_adr_antipatterns.py` v0.2.0 |
 | **Класс дефекта** | ADR_ANTIPATTERN |
 | **Trigger basis** | Структурный анализ ADR-документов. ADR определяется по: 1) заголовку (ADR-NNN, Decision Record, Architectural Decision), или 2) наличию ≥2 характерных секций (Decision, Context, Alternatives, Consequences). 5 подтипов: D018.1 MISSING_ALTERNATIVES, D018.2 MISSING_CONSEQUENCES, D018.3 MISSING_RATIONALE, D018.4 THIN_SECTION, D018.5 OUTCOME_ONLY. |
 | **Severity rules** | MISSING_ALTERNATIVES/MISSING_CONSEQUENCES/MISSING_RATIONALE → HIGH. THIN_SECTION/OUTCOME_ONLY → MEDIUM. |
@@ -140,8 +140,9 @@
 | **Section-role dependence** | Нет. Детектор работает на уровне ADR-структуры, не на уровне section roles. |
 | **Fixtures** | `fixtures/d018/tc1_complete_adr.md` (0 findings), `tc2_missing_alternatives.md` (D018.1), `tc3_missing_consequences.md` (D018.2), `tc4_missing_rationale.md` (D018.3), `tc5_outcome_only.md` (D018.5), `tc6_thin_section.md` (D018.4), `tc7_non_adr.md` (0), `tc8_inline_rationale.md` (0). |
 | **ADR detection** | Dual: title regex (`ADR[-\s]?\d*`, `decision record`, `architectural decision`) ИЛИ ≥2 из 4 структурных секций. RU + EN heading patterns. |
-| **Rationale check** | Секция Rationale/Argument ИЛИ inline маркеры (`because`, `since`, `due to`, `the reason`, `потому что`, `так как`, `по причине`, `ввиду`) в тексте Decision-секции или всего документа. |
-| **THIN_THRESHOLD** | 30 символов body (без заголовка). Пустые секции (0 chars) не ловятся — это нормальный паттерн секции-заголовка с подсекциями. |
+| **Rationale check** | Секция Rationale/Argument ИЛИ inline маркеры (`because`, `since`, `due to`, `the reason`, `given that`, `this was chosen`, `we chose/decided/selected ... because`, `потому что`, `так как`, `по причине`, `ввиду`, `в связи с`, `выбран потому/так как/ввиду`) в тексте Decision-секции или всего документа. v0.2.0: расширены маркеры. |
+| **THIN_THRESHOLD** | 50 символов body (без заголовка, v0.2.0: was 30). Пустые секции (0 chars) не ловятся — это нормальный паттерн секции-заголовка с подсекциями. |
+| **Heading aliases (v0.2.0)** | Alternatives: +`other options`, +`рассмотренные варианты`. Consequences: +`impact`, +`влияни`. |
 | **Known edge cases** | Документ с ≥2 ADR-секциями, но не являющийся ADR (FP risk, низкий на реальных корпусах). Lazy alternatives markers (`other options were considered`) — пока не используются, кандидат на D018.6. |
 | **Allowlist** | Нет entries. |
 | **Corpus results** | `adr_monorepo.md`: 0, `adr_programming_languages.md`: 0, `doc_adr_dirty.md`: 1 (MISSING_RATIONALE), остальные 7 не-ADR: 0. |

@@ -1,5 +1,5 @@
 # detectors/d018_adr_antipatterns.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D018 · ADR_ANTIPATTERN — Структурные антипаттерны в ADR.
 
@@ -41,11 +41,13 @@ _ADR_TITLE_RE = re.compile(
 _DECISION_HEADING = re.compile(r"\bdecision\b", re.IGNORECASE)
 _CONTEXT_HEADING = re.compile(r"\b(?:context|issue|контекст|проблем)\b", re.IGNORECASE)
 _ALTERNATIVES_HEADING = re.compile(
-    r"\b(?:alternatives?|options?\s+considered|positions?|варианты?|альтернатив)\b",
+    r"\b(?:alternatives?|options?\s+considered|other\s+options?|positions?|"
+    r"варианты?|рассмотренные?\s+варианты?|альтернатив)\b",
     re.IGNORECASE,
 )
 _CONSEQUENCES_HEADING = re.compile(
-    r"\b(?:consequences?|implications?|trade[\s-]?offs?|следстви|последстви|импликац)\b",
+    r"\b(?:consequences?|implications?|trade[\s-]?offs?|impact|"
+    r"следстви|последстви|импликац|влияни)\b",
     re.IGNORECASE,
 )
 _RATIONALE_HEADING = re.compile(
@@ -56,8 +58,10 @@ _STATUS_HEADING = re.compile(r"\b(?:status|статус)\b", re.IGNORECASE)
 
 # Маркеры rationale в тексте (если нет отдельной секции)
 _RATIONALE_MARKERS = re.compile(
-    r"\b(?:because|since|due\s+to|the\s+reason|rationale|"
-    r"потому\s+что|так\s+как|по\s+причине|обоснован|ввиду)\b",
+    r"\b(?:because|since|due\s+to|the\s+reason|rationale|given\s+that|"
+    r"this\s+(?:was\s+)?chosen|we\s+(?:chose|decided|selected)\b.*?\bbecause|"
+    r"потому\s+что|так\s+как|по\s+причине|обоснован|ввиду|"
+    r"выбран[аоы]?\s+(?:потому|так\s+как|ввиду)|в\s+связи\s+с)\b",
     re.IGNORECASE,
 )
 
@@ -157,7 +161,7 @@ def _analyze_structure(doc: Document) -> _ADRStructure:
 
 # ── Thin section check ────────────────────────────────────────────────────────
 
-_THIN_THRESHOLD = 30  # символов body (без заголовка)
+_THIN_THRESHOLD = 50  # символов body (без заголовка); v0.2.0: raised from 30
 
 
 # ── Detector ──────────────────────────────────────────────────────────────────

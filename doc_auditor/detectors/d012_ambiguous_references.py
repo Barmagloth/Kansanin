@@ -1,5 +1,5 @@
 # detectors/d012_ambiguous_references.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D012 · AMBIGUOUS_REFERENCE — Неоднозначная ссылка (местоимение).
 
@@ -244,6 +244,12 @@ def _find_ambiguous_pronouns(
             if after.startswith("own"):
                 continue
 
+        # Skip "it's" contraction — "it's a mess", "it's complex" = description
+        if pronoun == "it":
+            after_raw = current.text[m.end():m.end() + 5]
+            if after_raw.startswith("'s") or after_raw.startswith("'s"):
+                continue
+
         # Skip "it" at sentence start when it's likely expletive ("It is important...")
         if pronoun == "it" and m.start() < 3:
             continue
@@ -357,21 +363,27 @@ def detect(doc: Document) -> list[Finding]:
 
             ambiguous = _find_ambiguous_pronouns(sent, prev_sent, is_ru)
 
-            # Count pronoun occurrences for escalation
+            # v0.2.0: dedup — same pronoun word in same sentence → 1 finding
+            seen_pronouns: set[str] = set()
+            unique_pronoun_words = {m.group(1).lower() for m, _ in ambiguous}
+            has_multi_distinct = len(unique_pronoun_words) >= 2
             pronoun_count = len(ambiguous)
+            has_multi_pronoun = pronoun_count >= 2
+
+            # Stage D: severity / confidence
+            has_modal = bool(
+                _MODAL_CONTEXT_EN.search(sent.text)
+                or _MODAL_CONTEXT_RU.search(sent.text)
+            )
 
             for match, noun_count in ambiguous:
-                pronoun = match.group(1)
+                pronoun = match.group(1).lower()
+
+                # v0.2.0: dedup — skip if we already emitted for this pronoun word
+                if pronoun in seen_pronouns:
+                    continue
+
                 evidence = _build_evidence(sent.text, match)
-
-                # Stage D: severity / confidence
-                has_modal = bool(
-                    _MODAL_CONTEXT_EN.search(sent.text)
-                    or _MODAL_CONTEXT_RU.search(sent.text)
-                )
-
-                # Multiple ambiguous pronouns in same sentence = strong signal
-                has_multi_pronoun = pronoun_count >= 2
 
                 if role == SectionRole.NORMATIVE:
                     severity = Severity.HIGH
@@ -380,8 +392,9 @@ def detect(doc: Document) -> list[Finding]:
                     else:
                         confidence = Confidence.LOW
                 elif role == SectionRole.DECISION_RECORD:
+                    # v0.2.0: tighter gate — require modal AND multi-pronoun
                     severity = Severity.MEDIUM
-                    if has_modal or has_multi_pronoun:
+                    if has_modal and has_multi_distinct:
                         confidence = Confidence.MEDIUM
                     else:
                         confidence = Confidence.LOW
@@ -392,9 +405,11 @@ def detect(doc: Document) -> list[Finding]:
                     else:
                         confidence = Confidence.LOW
 
-                # Skip LOW confidence entirely — too noisy for v1
+                # Skip LOW confidence entirely — too noisy
                 if confidence == Confidence.LOW:
                     continue
+
+                seen_pronouns.add(pronoun)
 
                 if is_ru:
                     msg = (
