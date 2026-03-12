@@ -1,0 +1,141 @@
+# Kansanin — policy gate for engineering documents
+# Runs on PRs that touch docs/ or any .md file.
+# Fails CI when findings exceed the configured severity threshold.
+#
+# Usage: copy this file to .github/workflows/kansanin.yml
+# Configure paths and fail_on_severity as needed.
+
+name: Kansanin Doc Audit
+
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - '**/*.md'
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      target_paths:
+        description: 'Space-separated paths to audit'
+        required: false
+        default: 'docs/'
+      fail_on_severity:
+        description: 'Fail threshold (critical|high|medium|low)'
+        required: false
+        default: 'high'
+
+env:
+  FAIL_ON: ${{ github.event.inputs.fail_on_severity || 'high' }}
+  TARGET_PATHS: ${{ github.event.inputs.target_paths || 'docs/' }}
+
+jobs:
+  audit:
+    name: Doc Policy Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Discover target files
+        id: discover
+        run: |
+          # On PR: audit only changed .md files; on push/dispatch: audit target paths
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            FILES=$(git diff --name-only --diff-filter=ACMR \
+              ${{ github.event.pull_request.base.sha }} \
+              ${{ github.event.pull_request.head.sha }} \
+              -- '*.md' | tr '\n' ' ')
+          else
+            FILES=""
+            for p in $TARGET_PATHS; do
+              if [ -d "$p" ]; then
+                FILES="$FILES $(find "$p" -name '*.md' -type f | tr '\n' ' ')"
+              elif [ -f "$p" ]; then
+                FILES="$FILES $p"
+              fi
+            done
+          fi
+          FILES=$(echo "$FILES" | xargs)  # trim
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          if [ -z "$FILES" ]; then
+            echo "No markdown files to audit."
+          else
+            echo "Auditing: $FILES"
+          fi
+
+      - name: Run Kansanin
+        if: steps.discover.outputs.files != ''
+        id: audit
+        run: |
+          EXIT_FINAL=0
+          mkdir -p _kansanin_reports
+
+          for f in ${{ steps.discover.outputs.files }}; do
+            echo "::group::Auditing $f"
+            BASENAME=$(echo "$f" | sed 's/[\/]/_/g')
+
+            python doc_auditor/run_audit.py "$f" \
+              --fail-on "$FAIL_ON" \
+              --json \
+              --out "_kansanin_reports/${BASENAME}.json" \
+              || FILE_EXIT=$?
+
+            FILE_EXIT=${FILE_EXIT:-0}
+            if [ "$FILE_EXIT" -eq 1 ]; then
+              EXIT_FINAL=1
+              echo "::error file=$f::Policy violated (findings at or above $FAIL_ON)"
+            elif [ "$FILE_EXIT" -eq 2 ]; then
+              echo "::warning file=$f::Kansanin error (exit 2)"
+            fi
+            echo "::endgroup::"
+          done
+
+          echo "exit_code=$EXIT_FINAL" >> "$GITHUB_OUTPUT"
+
+      - name: Upload audit reports
+        if: steps.discover.outputs.files != '' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kansanin-reports
+          path: _kansanin_reports/
+          retention-days: 30
+
+      - name: Post summary
+        if: steps.discover.outputs.files != '' && always()
+        run: |
+          echo "## Kansanin Doc Audit" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| File | Total | Critical | High | Medium | Status |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|------|-------|----------|------|--------|--------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for report in _kansanin_reports/*.json; do
+            [ -f "$report" ] || continue
+            FILE=$(basename "$report" .json | sed 's/_/\//g')
+            TOTAL=$(python -c "import json; d=json.load(open('$report')); print(d.get('summary',{}).get('total',0))")
+            CRIT=$(python -c "import json; d=json.load(open('$report')); print(d.get('summary',{}).get('by_severity',{}).get('critical',0))")
+            HIGH=$(python -c "import json; d=json.load(open('$report')); print(d.get('summary',{}).get('by_severity',{}).get('high',0))")
+            MED=$(python -c "import json; d=json.load(open('$report')); print(d.get('summary',{}).get('by_severity',{}).get('medium',0))")
+            PASSED=$(python -c "import json; d=json.load(open('$report')); print('✅' if d.get('summary',{}).get('policy',{}).get('passed',True) else '❌')")
+            echo "| \`$FILE\` | $TOTAL | $CRIT | $HIGH | $MED | $PASSED |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Policy: \`--fail-on $FAIL_ON\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Enforce policy
+        if: steps.discover.outputs.files != ''
+        run: |
+          if [ "${{ steps.audit.outputs.exit_code }}" = "1" ]; then
+            echo "::error::Kansanin policy gate failed. Fix findings at or above '$FAIL_ON' severity."
+            exit 1
+          fi

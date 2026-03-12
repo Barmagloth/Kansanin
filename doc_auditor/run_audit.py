@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.10.0
+# version: 0.11.0
 """
-CLI-точка входа.
+CLI-точка входа / policy gate.
 Usage: python run_audit.py <file> [--json] [--out findings.json]
                                   [--show-suppressed] [--no-allowlist]
+                                  [--fail-on SEVERITY]
 
+Exit codes:
+  0 — no findings above threshold (policy passed)
+  1 — findings above threshold (policy violated)
+  2 — internal / runtime / config error
+
+v0.11.0: exit code policy, --fail-on, severity summary, CI-ready JSON.
 v0.10.0: D008 PASSIVE_WITHOUT_AGENT detector.
 v0.9.0: D012 AMBIGUOUS_REFERENCE detector.
 v0.8.0: D018 ADR_ANTIPATTERN detector.
@@ -17,13 +24,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import traceback
 from dataclasses import asdict
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from ingest.registry import ingest_file
 from normalize.document_builder import build_document
-from models.canonical import Finding
+from models.canonical import Finding, Severity
 from allowlist.engine import Allowlist, SuppressionTrace
 from detectors.d001_vagueness      import detect as detect_d001
 from detectors.d002_escape_clauses import detect as detect_d002
@@ -36,8 +44,38 @@ from detectors.d008_passive_voice import detect as detect_d008
 
 _ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d008, detect_d009, detect_d012, detect_d018]
 
+# Exit codes
+EXIT_OK       = 0  # policy passed — no findings above threshold
+EXIT_POLICY   = 1  # policy violated — findings above threshold
+EXIT_ERROR    = 2  # internal / runtime / config error
+
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 _SEV_ICON  = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪"}
+
+# Valid --fail-on values (case-insensitive)
+_VALID_FAIL_ON = frozenset({"critical", "high", "medium", "low", "info"})
+_DEFAULT_FAIL_ON = "high"  # default: CRITICAL + HIGH trigger exit 1
+
+
+def _severity_at_or_above(threshold: str) -> frozenset[str]:
+    """Return set of severity values at or above the given threshold."""
+    cutoff = _SEV_ORDER[threshold]
+    return frozenset(s for s, o in _SEV_ORDER.items() if o <= cutoff)
+
+
+def _count_by_severity(findings: list[Finding]) -> dict[str, int]:
+    """Count findings by severity. Returns dict ordered by severity."""
+    counts: dict[str, int] = {}
+    for f in findings:
+        counts[f.severity.value] = counts.get(f.severity.value, 0) + 1
+    return dict(sorted(counts.items(), key=lambda x: _SEV_ORDER[x[0]]))
+
+
+def _count_by_class(findings: list[Finding]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for f in findings:
+        counts[f.defect_class] = counts.get(f.defect_class, 0) + 1
+    return dict(sorted(counts.items()))
 
 
 def run(path: Path, use_allowlist: bool = True) -> list[Finding]:
@@ -82,9 +120,11 @@ def print_report(
     traces: list[SuppressionTrace] | None = None,
     show_suppressed: bool = False,
     allowlist: Allowlist | None = None,
+    fail_on: str = _DEFAULT_FAIL_ON,
+    policy_violated: bool = False,
 ) -> None:
     print(f"\n{'─'*62}")
-    print(f"  Doc-Auditor v0.10 · {doc_path.name}")
+    print(f"  Kansanin v0.11 · {doc_path.name}")
     print(f"{'─'*62}")
 
     # allowlist summary
@@ -99,26 +139,30 @@ def print_report(
             print(f"  Allowlist: {total_entries} entries ({', '.join(parts)})")
 
     if not findings and not (traces and show_suppressed):
-        print("  ✅  Дефектов не найдено.\n")
+        print(f"  ✅  No policy violations.  (--fail-on {fail_on})\n")
         return
 
     if findings:
-        by_sev: dict[str, int] = {}
-        for f in findings:
-            by_sev[f.severity.value] = by_sev.get(f.severity.value, 0) + 1
+        by_sev = _count_by_severity(findings)
         sev_parts = " · ".join(
             f"{_SEV_ICON[s]} {c} {s}"
-            for s, c in sorted(by_sev.items(), key=lambda x: _SEV_ORDER[x[0]])
+            for s, c in by_sev.items()
         )
         print(f"  Findings: {len(findings)}  |  {sev_parts}")
 
-        by_class: dict[str, int] = {}
-        for f in findings:
-            by_class[f.defect_class] = by_class.get(f.defect_class, 0) + 1
-        print(f"  Classes:  {'  '.join(f'{k}:{v}' for k,v in sorted(by_class.items()))}")
+        by_class = _count_by_class(findings)
+        print(f"  Classes:  {'  '.join(f'{k}:{v}' for k,v in by_class.items())}")
 
     if traces:
         print(f"  Suppressed: {len(traces)}")
+
+    # policy verdict
+    blocking = _severity_at_or_above(fail_on)
+    blocking_count = sum(1 for f in findings if f.severity.value in blocking)
+    if policy_violated:
+        print(f"  ❌ POLICY FAILED: {blocking_count} finding(s) at or above {fail_on}")
+    else:
+        print(f"  ✅ Policy passed  (--fail-on {fail_on})")
 
     print()
 
@@ -191,44 +235,99 @@ def traces_to_json(traces: list[SuppressionTrace]) -> list[dict]:
     return result
 
 
+def build_summary(
+    findings: list[Finding],
+    traces: list[SuppressionTrace],
+    fail_on: str,
+    policy_violated: bool,
+) -> dict:
+    """Build machine-readable summary for CI consumption."""
+    blocking = _severity_at_or_above(fail_on)
+    return {
+        "total": len(findings),
+        "by_severity": _count_by_severity(findings),
+        "by_class": _count_by_class(findings),
+        "suppressed": len(traces),
+        "policy": {
+            "fail_on": fail_on,
+            "blocking_severities": sorted(blocking, key=lambda s: _SEV_ORDER[s]),
+            "blocking_count": sum(1 for f in findings if f.severity.value in blocking),
+            "passed": not policy_violated,
+            "exit_code": EXIT_POLICY if policy_violated else EXIT_OK,
+        },
+    }
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Doc-Auditor")
-    parser.add_argument("file", type=Path)
-    parser.add_argument("--json", action="store_true")
-    parser.add_argument("--out", type=Path, default=None)
+    parser = argparse.ArgumentParser(
+        description="Kansanin — policy engine for engineering documents",
+        epilog="Exit codes: 0 = passed, 1 = policy violated, 2 = error",
+    )
+    parser.add_argument("file", type=Path, help="Document to audit (.md)")
+    parser.add_argument("--json", action="store_true",
+                        help="Output JSON instead of human-readable report")
+    parser.add_argument("--out", type=Path, default=None,
+                        help="Save JSON report to file")
     parser.add_argument("--show-suppressed", action="store_true",
                         help="Show findings suppressed by allowlist")
     parser.add_argument("--no-allowlist", action="store_true",
                         help="Disable allowlist filtering")
+    parser.add_argument("--fail-on", type=str, default=_DEFAULT_FAIL_ON,
+                        metavar="SEVERITY",
+                        help=f"Exit 1 if any finding at or above this severity "
+                             f"(critical|high|medium|low|info, default: {_DEFAULT_FAIL_ON})")
     args = parser.parse_args()
 
-    if not args.file.exists():
-        print(f"Файл не найден: {args.file}", file=sys.stderr)
-        sys.exit(1)
+    # validate --fail-on
+    fail_on = args.fail_on.lower()
+    if fail_on not in _VALID_FAIL_ON:
+        print(f"error: --fail-on must be one of: {', '.join(sorted(_VALID_FAIL_ON, key=lambda s: _SEV_ORDER[s]))}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
 
-    use_al = not args.no_allowlist
-    findings, traces, al = run_with_traces(args.file, use_allowlist=use_al)
+    if not args.file.exists():
+        print(f"error: file not found: {args.file}", file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    try:
+        use_al = not args.no_allowlist
+        findings, traces, al = run_with_traces(args.file, use_allowlist=use_al)
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        sys.exit(EXIT_ERROR)
+
+    # determine policy verdict
+    blocking = _severity_at_or_above(fail_on)
+    policy_violated = any(f.severity.value in blocking for f in findings)
 
     if args.json:
-        output = {"findings": findings_to_json(findings)}
+        output = {
+            "findings": findings_to_json(findings),
+            "summary": build_summary(findings, traces or [], fail_on, policy_violated),
+        }
         if args.show_suppressed and traces:
             output["suppressed"] = traces_to_json(traces)
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:
         print_report(findings, args.file, traces,
-                     show_suppressed=args.show_suppressed, allowlist=al)
+                     show_suppressed=args.show_suppressed, allowlist=al,
+                     fail_on=fail_on, policy_violated=policy_violated)
 
     if args.out:
-        output = {"findings": findings_to_json(findings)}
+        output = {
+            "findings": findings_to_json(findings),
+            "summary": build_summary(findings, traces or [], fail_on, policy_violated),
+        }
         if traces:
             output["suppressed"] = traces_to_json(traces)
         args.out.write_text(
             json.dumps(output, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        print(f"✓ Saved: {args.out}")
+        if not args.json:
+            print(f"✓ Saved: {args.out}")
 
-    sys.exit(0 if not findings else 1)
+    sys.exit(EXIT_POLICY if policy_violated else EXIT_OK)
 
 
 if __name__ == "__main__":

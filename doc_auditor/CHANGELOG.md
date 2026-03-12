@@ -5,6 +5,35 @@
 
 ---
 
+## [0.11.0] — 2026-03-12
+
+### Added — Sprint A: Policy Gate + Sprint B: CI Packaging
+
+- **Exit code policy** (`run_audit.py` v0.11.0):
+  - Exit 0: no findings above threshold (policy passed).
+  - Exit 1: findings above threshold (policy violated).
+  - Exit 2: internal / runtime / config error.
+  - `--fail-on SEVERITY` flag (default: `high`). Accepts: critical, high, medium, low, info.
+  - Policy verdict in CLI output: `❌ POLICY FAILED` / `✅ Policy passed`.
+
+- **Machine-readable summary** in JSON output:
+  - `summary.total`, `summary.by_severity`, `summary.by_class`, `summary.suppressed`.
+  - `summary.policy.fail_on`, `summary.policy.blocking_count`, `summary.policy.passed`, `summary.policy.exit_code`.
+
+- **GitHub Action workflow** (`.github/workflows/kansanin.yml`):
+  - Triggers on PR / push to main when .md files change.
+  - Per-file audit with configurable `fail_on_severity`.
+  - JSON artifact upload (30-day retention).
+  - Step summary table with per-file severity counts.
+  - `workflow_dispatch` for manual runs with custom paths and threshold.
+
+### Changed
+- CLI header: `Doc-Auditor` → `Kansanin` (rebrand).
+- Clean doc now shows `No policy violations` with threshold info.
+- Error messages use exit code 2 consistently.
+
+---
+
 ## [0.10.1] — 2026-03-12
 
 ### Changed — v2 hardening pass (D012, D008, D018)
