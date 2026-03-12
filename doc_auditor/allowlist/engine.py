@@ -1,5 +1,5 @@
 # allowlist/engine.py
-# version: 0.1.0
+# version: 0.2.0
 """
 Трёхуровневый allowlist engine.
 
@@ -8,11 +8,8 @@
   2. per-project   — .doc_auditor/allowlist.project.yaml
   3. global        — allowlist.global.yaml (в корне doc_auditor/)
 
-Iteration AL-1:
-  - загрузка 3 уровней
-  - exact match
-  - defect_id scoping
-  - trace of suppression source
+AL-1: загрузка 3 уровней, exact match, defect_id scoping, trace
+AL-2: schema validation, strict section_roles, reason/owner/expires
 """
 from __future__ import annotations
 
@@ -24,6 +21,7 @@ from typing import Optional
 import yaml
 
 from models.canonical import Finding
+from allowlist.schema import validate_allowlist_data
 
 logger = logging.getLogger("doc_auditor.allowlist")
 
@@ -62,23 +60,43 @@ class SuppressionTrace:
 # ── Loader ────────────────────────────────────────────────────────────────────
 
 def _parse_entries(data: dict, scope: str, source_file: str) -> list[AllowlistEntry]:
-    """Парсит YAML dict в список AllowlistEntry."""
+    """Парсит YAML dict в список AllowlistEntry.
+
+    AL-2: запускает schema validation перед парсингом.
+    Entries с ошибками пропускаются с warning.
+    """
+    if not data:
+        return []
+
+    # schema validation
+    vr = validate_allowlist_data(data, source_file)
+    for err in vr.errors:
+        logger.warning("allowlist validation error: %s", err)
+    for warn in vr.warnings:
+        logger.info("allowlist validation warning: %s", warn)
+
+    # build set of invalid entry indices
+    invalid_indices: set[int] = set()
+    for err in vr.errors:
+        if err.entry_index >= 0:
+            invalid_indices.add(err.entry_index)
+
     entries: list[AllowlistEntry] = []
     raw_terms = data.get("terms", [])
     if not isinstance(raw_terms, list):
-        logger.warning("allowlist %s: 'terms' is not a list, skipping", source_file)
         return entries
 
-    for item in raw_terms:
+    for i, item in enumerate(raw_terms):
         if not isinstance(item, dict):
             continue
+        if i in invalid_indices:
+            logger.warning("allowlist %s: skipping entry[%d] due to validation errors",
+                           source_file, i)
+            continue
+
         term = item.get("term", "").strip()
         defect_id = item.get("defect_id", "").strip()
         reason = item.get("reason", "").strip()
-        if not term or not defect_id:
-            logger.warning("allowlist %s: entry missing term or defect_id, skipping: %s",
-                           source_file, item)
-            continue
         roles_raw = item.get("applies_to_section_roles", [])
         if isinstance(roles_raw, str):
             roles_raw = [roles_raw]
@@ -91,7 +109,7 @@ def _parse_entries(data: dict, scope: str, source_file: str) -> list[AllowlistEn
             source_file=source_file,
             applies_to_section_roles=roles,
             match_mode=item.get("match_mode", "exact"),
-            expires=item.get("expires"),
+            expires=str(item["expires"]) if item.get("expires") else None,
             owner=item.get("owner"),
         ))
     return entries

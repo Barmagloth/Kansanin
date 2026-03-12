@@ -38,7 +38,9 @@ doc_auditor/
 │   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
 │   └── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
 ├── allowlist/
-│   └── engine.py              # 3-level allowlist engine (v0.1.0)
+│   ├── engine.py              # 3-level allowlist engine (v0.2.0)
+│   ├── schema.py              # schema validation (v0.1.0)
+│   └── validate_allowlist.py  # CLI validator (v0.1.0)
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
 ├── run_audit.py               # CLI точка входа (v0.6.0)
 ├── document_model.py          # backward-compat shim → models.canonical
@@ -60,7 +62,8 @@ doc_auditor/
 │   └── corpus/                # реальные + синтетические документы
 ├── detector_matrix.md           # source of truth: поведение каждого детектора
 ├── baseline_v0_4_x.md           # baseline v0.4.x (superseded by v0.5.0)
-├── baseline_v0_5_x.md           # baseline v0.5.x (текущий)
+├── baseline_v0_5_x.md           # baseline v0.5.x (superseded by v0.6.0)
+├── baseline_v0_6_0.md           # baseline v0.6.0 (текущий)
 ├── evaluation_summary_v0_5_0.md # evaluation: корпус, precision, рекомендации
 └── CHANGELOG.md
 ```

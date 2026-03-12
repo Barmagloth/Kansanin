@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.5.x
+# Detector Matrix — doc_auditor v0.6.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -17,7 +17,8 @@
 | **Suppression** | 1) `is_suppressed_heading()` из `normalize/suppression.py` — по ключевым словам. 2) Block-level: FENCED_CODE, BLOCKQUOTE, TABLE_ROW блоки не попадают в canonical Document. 3) Inline: suppressed_spans (inline code, checklist markers) маскируются в `document_builder`. 4) Section role gating: `explanatory` и `unknown` — skip полностью. |
 | **Section-role dependence** | Полная. Поведение определяется ролью секции. Без `normative` или `decision_record` + модальный — детектор молчит. |
 | **Fixtures** | `good_vagueness.md`, `suppression_vagueness.md`, `expected_vagueness.json` |
-| **Known edge cases** | «периодически» в нормативном заголовке без модального — borderline TP (MEDIUM confidence). «быстрый» в `security: "raw"` — borderline (описание сценария, не требование). `such as` — не входит в словарь (убран из-за FP). D001-C allowlist не реализован — доменные термины могут дать FP. |
+| **Allowlist** | «периодически» — per-document allowlist (concept_v1_6), «быстрый» — per-document allowlist (graph_spec_v5_3). Оба suppressed с trace. |
+| **Known edge cases** | `such as` — не входит в словарь (убран из-за FP). Русские формы (быстрый/быстрого) требуют отдельных entries при exact match. |
 
 ---
 
@@ -93,3 +94,43 @@
 Поиск в любой позиции заголовка (покрывает «21. Глоссарий»).
 
 **Примечание:** D002, D004, D005 содержат собственные `_SUPPRESSED` regex — legacy-дубликаты, фактически не используемые. Кандидат на удаление при следующем cleanup.
+
+---
+
+## Allowlist — поведение (v0.6.0)
+
+Allowlist применяется **после** всех детекторов, на уровне Finding. Это не suppression-зона (которая фильтрует текст до детектора), а post-filter.
+
+**Приоритет (от узкого к широкому):**
+
+| Уровень | Файл | Когда использовать |
+|---|---|---|
+| document | `<doc>.allowlist.yaml` | Термин допустим только в одном документе |
+| project | `.doc_auditor/allowlist.project.yaml` | Термин допустим в рамках проекта |
+| global | `allowlist.global.yaml` | Универсальное исключение (крайне редко) |
+
+**Matching:**
+- `term` — exact match, case-insensitive
+- `defect_id` — обязательное, строго D001..D999
+- `applies_to_section_roles` — если указаны, finding подавляется только в этих ролях
+- `reason` — обязательное (AL-2), отображается в `--show-suppressed`
+
+**Валидация:**
+- `allowlist/schema.py` проверяет каждый entry при загрузке
+- Невалидные entries пропускаются с warning, не ломают остальные
+- CLI: `python -m allowlist.validate_allowlist <path>`
+
+**CLI режимы:**
+
+| Режим | Что видит пользователь |
+|---|---|
+| `python run_audit.py doc.md` | Только active findings (suppressed скрыты) |
+| `python run_audit.py doc.md --show-suppressed` | Active + suppressed с reason, scope, source |
+| `python run_audit.py doc.md --no-allowlist` | Все findings (allowlist отключён) |
+
+**Текущие entries:**
+
+| term | defect_id | scope | document |
+|---|---|---|---|
+| быстрый | D001 | document | graph_spec_v5_3.md |
+| периодически | D001 | document | concept_v1_6.md |

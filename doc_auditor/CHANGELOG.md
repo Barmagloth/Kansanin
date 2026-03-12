@@ -5,6 +5,19 @@
 
 ---
 
+## [0.6.1] — 2026-03-12
+
+### Added
+- `allowlist/schema.py` v0.1.0: строгая schema validation (AL-2). reason обязательно, section_roles валидируются по enum, defect_id по формату D\d{3}, expires по ISO date.
+- `allowlist/validate_allowlist.py` v0.1.0: CLI-валидатор для YAML файлов.
+- `baseline_v0_6_0.md`: фиксация состояния после allowlist.
+- `detector_matrix.md`: обновлён до v0.6.0, добавлена секция Allowlist behaviour.
+
+### Changed
+- `allowlist/engine.py` v0.2.0: интеграция schema validation при загрузке. Невалидные entries пропускаются с warning.
+
+---
+
 ## [0.6.0] — 2026-03-12
 
 ### Added
