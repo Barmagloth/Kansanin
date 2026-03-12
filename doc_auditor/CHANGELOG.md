@@ -5,6 +5,18 @@
 
 ---
 
+## [0.6.0] — 2026-03-12
+
+### Added
+- `allowlist/engine.py` v0.1.0: трёхуровневый allowlist (document > project > global). Exact match, defect_id scoping, section role scoping, suppression trace.
+- Per-document allowlist: `graph_spec_v5_3.md.allowlist.yaml` (D001 «быстрый»), `concept_v1_6.md.allowlist.yaml` (D001 «периодически»).
+- CLI flags: `--show-suppressed` (trace вывод), `--no-allowlist` (отключение фильтрации).
+
+### Changed
+- `run_audit.py` v0.6.0: интегрирован allowlist engine в pipeline. JSON-вывод теперь `{findings: [...], suppressed: [...]}` при `--show-suppressed`.
+
+---
+
 ## [0.5.1] — 2026-03-12
 
 ### Added

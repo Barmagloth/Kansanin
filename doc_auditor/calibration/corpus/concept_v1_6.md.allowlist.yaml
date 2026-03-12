@@ -1,0 +1,8 @@
+# Per-document allowlist for concept_v1_6.md
+# Scope: document only — do NOT promote to project/global without evidence.
+
+terms:
+  - term: "периодически"
+    defect_id: "D001"
+    reason: "Accepted recurring-process term in this concept document; section heading contains 'требование' but content is conceptual, not SRS-grade."
+    applies_to_section_roles: ["normative"]

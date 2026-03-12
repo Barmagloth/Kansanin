@@ -1,0 +1,8 @@
+# Per-document allowlist for graph_spec_v5_3.md
+# Scope: document only — do NOT promote to project/global without evidence.
+
+terms:
+  - term: "быстрый"
+    defect_id: "D001"
+    reason: "Used as a defined project term in graph_spec; describes use-case scenario, not a requirement."
+    applies_to_section_roles: ["normative"]

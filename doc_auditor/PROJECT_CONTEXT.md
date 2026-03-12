@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-12
-# Версия пакета: v0.5.0
+# Версия пакета: v0.6.0
 
 ---
 
@@ -37,8 +37,10 @@ doc_auditor/
 │   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.1)
 │   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
 │   └── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
+├── allowlist/
+│   └── engine.py              # 3-level allowlist engine (v0.1.0)
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.5.0)
+├── run_audit.py               # CLI точка входа (v0.6.0)
 ├── document_model.py          # backward-compat shim → models.canonical
 ├── markdown_ingest.py         # backward-compat shim → ingest + normalize
 ├── section_roles.py           # backward-compat shim → normalize.suppression
@@ -73,6 +75,12 @@ python run_audit.py документ.md
 
 # С JSON-выводом
 python run_audit.py документ.md --json --out findings.json
+
+# С allowlist trace
+python run_audit.py документ.md --show-suppressed
+
+# Без allowlist (все findings)
+python run_audit.py документ.md --no-allowlist
 
 # Calibration harness
 python calibration/calibrate.py calibration/corpus/
@@ -182,9 +190,12 @@ graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1
 `shall | must | should | должен | должна | должно | должны | обязан | необходимо | требуется | следует`
 → confidence HIGH, иначе MEDIUM
 
-**D001-C (не реализован):** allowlist доменно-специфичных терминов.
-Файл: `d001_allowlist.yaml`. Подключается в `_load_vocab()` одной строкой.
-Триггер: первый реальный FP из-за домен-специфичного термина (scalable, resilient и т.п.)
+**Allowlist (v0.6.0, реализован):**
+Трёхуровневый allowlist: document > project > global.
+Формат: YAML-файлы (`*.allowlist.yaml`, `.doc_auditor/allowlist.project.yaml`, `allowlist.global.yaml`).
+Entry: term, defect_id, reason, applies_to_section_roles (опц.), match_mode (exact), expires (опц.).
+CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
+Текущие entries: `быстрый` (graph_spec, per-document), `периодически` (concept_v1_6, per-document).
 
 ---
 
@@ -193,13 +204,16 @@ graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1
 **Стабилизация (текущий приоритет):**
 - ✅ `baseline_v0_5_x.md` — зафиксирован
 - ✅ `evaluation_summary_v0_5_0.md` — собран (80 findings, 0 FP на реальных)
-- Реализовать allowlist (global / per-project / per-document)
+- ✅ Allowlist v0.6.0 — реализован (3-level, exact match, defect_id scoping, trace)
 - Расширить корпус реальных документов (6/10 → нужно ≥ 10 для Tier-2 entry)
+
+**Allowlist iterations (AL-2, AL-3):**
+- AL-2: reason required (enforce), expires support, section-role scoping (уже в engine, нужны тесты)
+- AL-3: review tooling — показать все active entries и где они сработали по корпусу
 
 **Pending fixes (низкий приоритет):**
 - C-6: уточнить heading heuristics — «ключевые принципы» → explanatory
 - C-8: поддержать нумерованные секции без `#` при ингесте
-- graph_spec `security: "raw"` — уточнить: role heuristics или allowlist
 
 **Следующий детектор-кандидат (после стабилизации):**
 - D012 Vague Pronouns / Ambiguous References
@@ -209,11 +223,7 @@ graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1
 **Условие входа в Tier 2 (NLP):**
 - Tier-1 precision на реальных доках стабильна
 - Есть хотя бы 10 задокументированных реальных документов в корпусе
-- D001-C allowlist реализован
-
-**Условие входа в D001-C:**
-- Первый реальный FP из-за домен-специфичного термина зафиксирован в calibration
-- Фактически: `быстрый` в graph_spec — кандидат (borderline, не чистый FP)
+- ✅ Allowlist реализован
 
 ---
 
