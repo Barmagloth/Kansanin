@@ -34,8 +34,9 @@ from detectors.d005_placeholder import detect as d005
 from detectors.d002_escape_clauses import detect as d002
 from detectors.d004_open_ended_lists import detect as d004
 from detectors.d009_composite_requirements import detect as d009
+from detectors.d018_adr_antipatterns import detect as d018
 
-_DETECTORS = [d001, d005, d002, d004, d009]
+_DETECTORS = [d001, d005, d002, d004, d009, d018]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 

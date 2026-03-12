@@ -5,6 +5,23 @@
 
 ---
 
+## [0.8.0] — 2026-03-12
+
+### Added
+- `detectors/d018_adr_antipatterns.py` v0.1.0: D018 ADR_ANTIPATTERN — 5 структурных антипаттернов в ADR-документах. Подтипы: MISSING_ALTERNATIVES, MISSING_CONSEQUENCES, MISSING_RATIONALE, THIN_SECTION, OUTCOME_ONLY. Dual ADR detection: title pattern + structural heuristic (≥2 секций). RU + EN.
+- `fixtures/d018/`: 8 fixture-файлов (tc1–tc8) для каждого подтипа D018 + negative cases.
+
+### Changed
+- `run_audit.py` v0.8.0: добавлен D018 в pipeline (6 детекторов).
+- `calibration/calibrate.py`: добавлен D018 в harness.
+- `detector_matrix.md` v0.8.0: добавлен D018, обновлена сводная таблица.
+
+### Verified
+- Corpus: `adr_monorepo.md` 0, `adr_programming_languages.md` 0 (чистые ADR), `doc_adr_dirty.md` 1 finding (MISSING_RATIONALE), остальные 7 не-ADR: 0.
+- 8 fixtures: все ожидаемые findings подтверждены.
+
+---
+
 ## [0.7.0] — 2026-03-12
 
 ### Added

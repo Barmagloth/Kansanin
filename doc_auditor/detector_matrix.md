@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.6.0
+# Detector Matrix — doc_auditor v0.8.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -88,6 +88,27 @@
 
 ---
 
+## D018 · ADR_ANTIPATTERN
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d018_adr_antipatterns.py` v0.1.0 |
+| **Класс дефекта** | ADR_ANTIPATTERN |
+| **Trigger basis** | Структурный анализ ADR-документов. ADR определяется по: 1) заголовку (ADR-NNN, Decision Record, Architectural Decision), или 2) наличию ≥2 характерных секций (Decision, Context, Alternatives, Consequences). 5 подтипов: D018.1 MISSING_ALTERNATIVES, D018.2 MISSING_CONSEQUENCES, D018.3 MISSING_RATIONALE, D018.4 THIN_SECTION, D018.5 OUTCOME_ONLY. |
+| **Severity rules** | MISSING_ALTERNATIVES/MISSING_CONSEQUENCES/MISSING_RATIONALE → HIGH. THIN_SECTION/OUTCOME_ONLY → MEDIUM. |
+| **Confidence rules** | MISSING_ALTERNATIVES/MISSING_CONSEQUENCES → HIGH. MISSING_RATIONALE → MEDIUM (rationale может быть inline). THIN_SECTION → MEDIUM. OUTCOME_ONLY → HIGH. |
+| **Suppression** | 1) Не-ADR документы — полный skip (молча). 2) Block-level + inline через `document_builder`. 3) `is_suppressed_heading()` НЕ используется (ADR секции не подлежат suppression). |
+| **Section-role dependence** | Нет. Детектор работает на уровне ADR-структуры, не на уровне section roles. |
+| **Fixtures** | `fixtures/d018/tc1_complete_adr.md` (0 findings), `tc2_missing_alternatives.md` (D018.1), `tc3_missing_consequences.md` (D018.2), `tc4_missing_rationale.md` (D018.3), `tc5_outcome_only.md` (D018.5), `tc6_thin_section.md` (D018.4), `tc7_non_adr.md` (0), `tc8_inline_rationale.md` (0). |
+| **ADR detection** | Dual: title regex (`ADR[-\s]?\d*`, `decision record`, `architectural decision`) ИЛИ ≥2 из 4 структурных секций. RU + EN heading patterns. |
+| **Rationale check** | Секция Rationale/Argument ИЛИ inline маркеры (`because`, `since`, `due to`, `the reason`, `потому что`, `так как`, `по причине`, `ввиду`) в тексте Decision-секции или всего документа. |
+| **THIN_THRESHOLD** | 30 символов body (без заголовка). Пустые секции (0 chars) не ловятся — это нормальный паттерн секции-заголовка с подсекциями. |
+| **Known edge cases** | Документ с ≥2 ADR-секциями, но не являющийся ADR (FP risk, низкий на реальных корпусах). Lazy alternatives markers (`other options were considered`) — пока не используются, кандидат на D018.6. |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | `adr_monorepo.md`: 0, `adr_programming_languages.md`: 0, `doc_adr_dirty.md`: 1 (MISSING_RATIONALE), остальные 7 не-ADR: 0. |
+
+---
+
 ## Сводная таблица
 
 | ID | Класс | Severity | Confidence | Section-role gating | Suppression layers |
@@ -97,6 +118,7 @@
 | D004 | OPEN_ENDED_LIST | HIGH (normative heading) / MEDIUM (default) | HIGH (всегда) | Частичная (свои heuristics) | block-level + inline + heading |
 | D005 | PLACEHOLDER | CRITICAL (всегда) | HIGH / MEDIUM (по паттерну) | Нет | block-level + inline + heading |
 | D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
+| D018 | ADR_ANTIPATTERN | HIGH (missing sections) / MEDIUM (thin, outcome_only) | HIGH / MEDIUM (по подтипу) | Нет (ADR-level, не section-role) | ADR detection gate + block-level + inline |
 
 ---
 
