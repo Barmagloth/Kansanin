@@ -1,0 +1,15 @@
+# Sample .pre-commit-config.yaml for Kansanin
+# Copy to your repo root as .pre-commit-config.yaml
+#
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run kansanin --all-files
+
+repos:
+  - repo: https://github.com/Barmagloth/Kansanin
+    rev: main  # pin to a tag/commit in production
+    hooks:
+      - id: kansanin
+        # Override threshold: critical, high (default), medium, low
+        args: ['--fail-on', 'high']
+        # Limit to specific paths:
+        # files: ^docs/

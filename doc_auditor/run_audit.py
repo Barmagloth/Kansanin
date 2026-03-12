@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.11.0
+# version: 0.12.0
 """
 CLI-точка входа / policy gate.
-Usage: python run_audit.py <file> [--json] [--out findings.json]
-                                  [--show-suppressed] [--no-allowlist]
-                                  [--fail-on SEVERITY]
+Usage: python run_audit.py <file...> [--json] [--out findings.json]
+                                     [--show-suppressed] [--no-allowlist]
+                                     [--fail-on SEVERITY]
 
 Exit codes:
   0 — no findings above threshold (policy passed)
   1 — findings above threshold (policy violated)
   2 — internal / runtime / config error
 
+v0.12.0: multi-file CLI, pre-commit hook support.
 v0.11.0: exit code policy, --fail-on, severity summary, CI-ready JSON.
 v0.10.0: D008 PASSIVE_WITHOUT_AGENT detector.
 v0.9.0: D012 AMBIGUOUS_REFERENCE detector.
@@ -258,12 +259,27 @@ def build_summary(
     }
 
 
+def _audit_one(
+    path: Path,
+    fail_on: str,
+    use_allowlist: bool,
+    show_suppressed: bool,
+    as_json: bool,
+) -> tuple[bool, list[Finding], list[SuppressionTrace], Allowlist | None]:
+    """Audit a single file. Returns (policy_violated, findings, traces, al)."""
+    findings, traces, al = run_with_traces(path, use_allowlist=use_allowlist)
+    blocking = _severity_at_or_above(fail_on)
+    violated = any(f.severity.value in blocking for f in findings)
+    return violated, findings, traces, al
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Kansanin — policy engine for engineering documents",
         epilog="Exit codes: 0 = passed, 1 = policy violated, 2 = error",
     )
-    parser.add_argument("file", type=Path, help="Document to audit (.md)")
+    parser.add_argument("files", nargs="+", type=Path, metavar="FILE",
+                        help="Document(s) to audit (.md)")
     parser.add_argument("--json", action="store_true",
                         help="Output JSON instead of human-readable report")
     parser.add_argument("--out", type=Path, default=None,
@@ -284,50 +300,92 @@ def main() -> None:
         print(f"error: --fail-on must be one of: {', '.join(sorted(_VALID_FAIL_ON, key=lambda s: _SEV_ORDER[s]))}", file=sys.stderr)
         sys.exit(EXIT_ERROR)
 
-    if not args.file.exists():
-        print(f"error: file not found: {args.file}", file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+    # validate files exist
+    for f in args.files:
+        if not f.exists():
+            print(f"error: file not found: {f}", file=sys.stderr)
+            sys.exit(EXIT_ERROR)
 
-    try:
-        use_al = not args.no_allowlist
-        findings, traces, al = run_with_traces(args.file, use_allowlist=use_al)
-    except Exception as exc:
-        print(f"error: {exc}", file=sys.stderr)
-        traceback.print_exc(file=sys.stderr)
-        sys.exit(EXIT_ERROR)
+    use_al = not args.no_allowlist
+    any_violated = False
+    all_findings: list[Finding] = []
+    all_traces: list[SuppressionTrace] = []
+    per_file: list[dict] = []  # for multi-file JSON
 
-    # determine policy verdict
-    blocking = _severity_at_or_above(fail_on)
-    policy_violated = any(f.severity.value in blocking for f in findings)
+    for fpath in args.files:
+        try:
+            violated, findings, traces, al = _audit_one(
+                fpath, fail_on, use_al, args.show_suppressed, args.json,
+            )
+        except Exception as exc:
+            print(f"error: {fpath}: {exc}", file=sys.stderr)
+            traceback.print_exc(file=sys.stderr)
+            sys.exit(EXIT_ERROR)
 
+        if violated:
+            any_violated = True
+        all_findings.extend(findings)
+        all_traces.extend(traces or [])
+
+        if not args.json:
+            print_report(findings, fpath, traces,
+                         show_suppressed=args.show_suppressed, allowlist=al,
+                         fail_on=fail_on, policy_violated=violated)
+
+        per_file.append({
+            "file": str(fpath),
+            "findings": findings_to_json(findings),
+            "summary": build_summary(findings, traces or [], fail_on, violated),
+        })
+
+    # multi-file summary (text mode, >1 file)
+    if not args.json and len(args.files) > 1:
+        blocking = _severity_at_or_above(fail_on)
+        blocking_total = sum(1 for f in all_findings if f.severity.value in blocking)
+        print(f"{'═'*62}")
+        print(f"  Kansanin · {len(args.files)} files · {len(all_findings)} findings")
+        if all_findings:
+            by_sev = _count_by_severity(all_findings)
+            sev_parts = " · ".join(f"{_SEV_ICON[s]} {c} {s}" for s, c in by_sev.items())
+            print(f"  {sev_parts}")
+        if any_violated:
+            print(f"  ❌ POLICY FAILED: {blocking_total} finding(s) at or above {fail_on}")
+        else:
+            print(f"  ✅ Policy passed  (--fail-on {fail_on})")
+        print(f"{'═'*62}\n")
+
+    # JSON output
     if args.json:
-        output = {
-            "findings": findings_to_json(findings),
-            "summary": build_summary(findings, traces or [], fail_on, policy_violated),
-        }
-        if args.show_suppressed and traces:
-            output["suppressed"] = traces_to_json(traces)
+        if len(args.files) == 1:
+            output = per_file[0]
+            if args.show_suppressed and all_traces:
+                output["suppressed"] = traces_to_json(all_traces)
+        else:
+            output = {
+                "files": per_file,
+                "summary": build_summary(all_findings, all_traces, fail_on, any_violated),
+            }
         print(json.dumps(output, ensure_ascii=False, indent=2))
-    else:
-        print_report(findings, args.file, traces,
-                     show_suppressed=args.show_suppressed, allowlist=al,
-                     fail_on=fail_on, policy_violated=policy_violated)
 
+    # --out
     if args.out:
-        output = {
-            "findings": findings_to_json(findings),
-            "summary": build_summary(findings, traces or [], fail_on, policy_violated),
-        }
-        if traces:
-            output["suppressed"] = traces_to_json(traces)
+        if len(args.files) == 1:
+            out_data = per_file[0]
+            if all_traces:
+                out_data["suppressed"] = traces_to_json(all_traces)
+        else:
+            out_data = {
+                "files": per_file,
+                "summary": build_summary(all_findings, all_traces, fail_on, any_violated),
+            }
         args.out.write_text(
-            json.dumps(output, ensure_ascii=False, indent=2),
+            json.dumps(out_data, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
         if not args.json:
             print(f"✓ Saved: {args.out}")
 
-    sys.exit(EXIT_POLICY if policy_violated else EXIT_OK)
+    sys.exit(EXIT_POLICY if any_violated else EXIT_OK)
 
 
 if __name__ == "__main__":

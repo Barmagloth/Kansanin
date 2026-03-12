@@ -5,6 +5,17 @@
 
 ---
 
+## [0.12.0] — 2026-03-12
+
+### Added — Pre-commit hook
+
+- **Multi-file CLI**: `run_audit.py` now accepts multiple files (`FILE...`). Aggregated summary for >1 file.
+- **`.pre-commit-hooks.yaml`**: Kansanin as a pre-commit hook. `pass_filenames: true`, runs on markdown files.
+- **`.pre-commit-config.sample.yaml`**: sample config for downstream repos.
+- `_audit_one()` internal refactor for per-file audit isolation.
+
+---
+
 ## [0.11.0] — 2026-03-12
 
 ### Added — Sprint A: Policy Gate + Sprint B: CI Packaging
