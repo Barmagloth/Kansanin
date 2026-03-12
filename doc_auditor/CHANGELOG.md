@@ -5,6 +5,19 @@
 
 ---
 
+## [0.7.0] — 2026-03-12
+
+### Added
+- `detectors/d009_composite_requirements.py` v0.1.0: D009 COMPOSITE_REQUIREMENT — ловит несколько глагольных обязательств в одном предложении. Только normative секции. RU (инфинитивы) + EN (verb list ~130 слов). HIGH/MEDIUM confidence.
+- `fixtures/good_composite.md`: fixture для D009 (8 TP, RU+EN).
+
+### Changed
+- `run_audit.py` v0.7.0: добавлен D009 в pipeline.
+- `calibration/calibrate.py` v0.3.0: добавлен D009 в harness.
+- `detector_matrix.md`: добавлен D009, обновлена сводная таблица.
+
+---
+
 ## [0.6.1] — 2026-03-12
 
 ### Added

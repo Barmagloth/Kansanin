@@ -70,6 +70,24 @@
 
 ---
 
+## D009 · COMPOSITE_REQUIREMENT
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d009_composite_requirements.py` v0.1.0 |
+| **Класс дефекта** | COMPOSITE_REQUIREMENT |
+| **Trigger basis** | Regex + verb heuristics. Ловит несколько глагольных обязательств в одном предложении. HIGH: двойной модальный, «а также»/«as well as» + инфинитив/verb. MEDIUM: «и»/«and»/«или»/«or» + инфинитив/verb. EN verb list: ~130 action-глаголов. RU: инфинитивные суффиксы (-ть, -ать, -ять, -ировать и т.д.). |
+| **Severity rules** | HIGH (всегда) — v1 работает только в normative. |
+| **Confidence rules** | HIGH: двойной модальный, «а также» / «as well as». MEDIUM: «и»/«and»/«или»/«or» + глагол. |
+| **Suppression** | 1) `is_suppressed_heading()`. 2) Block-level + inline. 3) Section role gating: только `normative` (v1). |
+| **Section-role dependence** | Строгая: только NORMATIVE. Explanatory, decision_record, suppressed, unknown — skip. |
+| **Fixtures** | `good_composite.md` |
+| **Design choice** | Не ловит перечисления объектов/параметров (PDF, XLSX — D004 территория). Не ловит наречия через «и» (быстро и надёжно — D001). Различает «verb + and + verb» от «noun + and + noun». |
+| **Known edge cases** | Русские деепричастия не обязательно инфинитивы — могут дать FN. EN verb list конечен — глаголы вне списка не ловятся. Синтетический корпус не содержит composite requirements (0 findings), calibration только на fixture. |
+| **Allowlist** | Нет entries. |
+
+---
+
 ## Сводная таблица
 
 | ID | Класс | Severity | Confidence | Section-role gating | Suppression layers |
@@ -78,6 +96,7 @@
 | D002 | ESCAPE_CLAUSE | HIGH (всегда) | HIGH / MEDIUM (по паттерну) | Нет (только suppression) | block-level + inline + heading |
 | D004 | OPEN_ENDED_LIST | HIGH (normative heading) / MEDIUM (default) | HIGH (всегда) | Частичная (свои heuristics) | block-level + inline + heading |
 | D005 | PLACEHOLDER | CRITICAL (всегда) | HIGH / MEDIUM (по паттерну) | Нет | block-level + inline + heading |
+| D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
 
 ---
 

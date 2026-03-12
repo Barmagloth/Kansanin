@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.6.0
+# version: 0.7.0
 """
 CLI-точка входа.
 Usage: python run_audit.py <file> [--json] [--out findings.json]
                                   [--show-suppressed] [--no-allowlist]
 
+v0.7.0: D009 COMPOSITE_REQUIREMENT detector.
 v0.6.0: allowlist integration (3-level: document > project > global).
 v0.5.0: multi-format pipeline (ingest → normalize → detect).
 """
@@ -25,8 +26,9 @@ from detectors.d001_vagueness      import detect as detect_d001
 from detectors.d002_escape_clauses import detect as detect_d002
 from detectors.d004_open_ended_lists import detect as detect_d004
 from detectors.d005_placeholder    import detect as detect_d005
+from detectors.d009_composite_requirements import detect as detect_d009
 
-_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005]
+_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d009]
 
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 _SEV_ICON  = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🔵", "info": "⚪"}
@@ -76,7 +78,7 @@ def print_report(
     allowlist: Allowlist | None = None,
 ) -> None:
     print(f"\n{'─'*62}")
-    print(f"  Doc-Auditor v0.6 · {doc_path.name}")
+    print(f"  Doc-Auditor v0.7 · {doc_path.name}")
     print(f"{'─'*62}")
 
     # allowlist summary
