@@ -66,11 +66,6 @@ _MEDIUM: list[_Pattern] = [
 
 _ALL_PATTERNS = _HIGH + _MEDIUM
 
-_SUPPRESSED = re.compile(
-    r"^(пример|example|appendix|приложение|глоссарий|glossary|changelog|history)",
-    re.I,
-)
-
 
 def detect(doc: Document) -> list[Finding]:
     findings: list[Finding] = []

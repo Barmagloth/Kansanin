@@ -41,6 +41,7 @@ from detectors.d008_passive_voice import detect as d008
 from detectors.d007_untestable import detect as d007
 from detectors.d006_missing_priority import detect as d006
 from detectors.d003_undefined_acronym import detect as d003
+from run_audit import _dedup_cross_detector
 
 _DETECTORS = [d001, d002, d003, d004, d005, d006, d007, d008, d009, d012, d018]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
@@ -63,6 +64,7 @@ def run_corpus(corpus_dir: Path) -> list[dict]:
         findings: list[Finding] = []
         for det in _DETECTORS:
             findings.extend(det(doc))
+        findings = _dedup_cross_detector(findings)
         findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
         print(f"[{len(findings)} findings]")
         for f in findings:

@@ -1,5 +1,5 @@
 # detectors/d004_open_ended_lists.py
-# version: 0.1.1
+# version: 0.2.0
 """
 D004 · OPEN_ENDED_LIST — Незавершённые перечисления.
 
@@ -14,7 +14,7 @@ Confidence: high
 from __future__ import annotations
 import re
 from dataclasses import dataclass
-from normalize.suppression import is_suppressed_heading
+from normalize.suppression import classify_heading, SectionRole
 from models.canonical import Document, Finding, Severity, Confidence
 
 _REMEDIATION = (
@@ -53,44 +53,25 @@ _PATTERNS: list[_Pattern] = [
     # Кандидат на возврат только в нормативных секциях + контекстный фильтр (Tier 2).
 ]
 
-# Heading-слова, указывающие на нормативную секцию → severity HIGH
-_NORMATIVE_HEADING = re.compile(
-    r"требовани|requirement|constraint|ограничени|критери|criterion"
-    r"|acceptance|приёмк|спецификаци|specification|scope|объём",
-    re.I,
-)
-
-# Heading-слова, указывающие на пояснительную секцию → severity MEDIUM
-# ADR-секции (assumptions, positions, argument, implications, rationale, notes)
-# исторически содержат illustrative etc./and so on — не нормативный контекст.
-_EXPLANATORY_HEADING = re.compile(
-    r"описани|overview|введени|introduction|background|контекст|context"
-    r"|пример|example|appendix|приложени|глоссари|glossary"
-    r"|assumption|позици|position|argument|implication|следстви"
-    r"|rationale|note|risks?|риски|обзор|summary|issue|decision",
-    re.I,
-)
-
-_SUPPRESSED = re.compile(
-    r"^(пример|example|appendix|приложение|глоссарий|glossary|changelog|history)",
-    re.I,
-)
+_ROLE_SEVERITY: dict[SectionRole, Severity] = {
+    SectionRole.NORMATIVE:       Severity.HIGH,
+    SectionRole.DECISION_RECORD: Severity.MEDIUM,
+    SectionRole.EXPLANATORY:     Severity.MEDIUM,
+    SectionRole.UNKNOWN:         Severity.MEDIUM,
+}
 
 
-def _severity_for(heading: str) -> Severity:
-    if _NORMATIVE_HEADING.search(heading):
-        return Severity.HIGH
-    if _EXPLANATORY_HEADING.search(heading):
-        return Severity.MEDIUM
-    return Severity.MEDIUM   # default — осторожно
+def _severity_for_role(role: SectionRole) -> Severity:
+    return _ROLE_SEVERITY.get(role, Severity.MEDIUM)
 
 
 def detect(doc: Document) -> list[Finding]:
     findings: list[Finding] = []
     for section in doc.sections:
-        if is_suppressed_heading(section.heading):
+        role = classify_heading(section.heading)
+        if role == SectionRole.SUPPRESSED:
             continue
-        sev = _severity_for(section.heading)
+        sev = _severity_for_role(role)
         for sentence in section.sentences:
             for pat in _PATTERNS:
                 for m in pat.regex.finditer(sentence.text):
@@ -110,5 +91,6 @@ def detect(doc: Document) -> list[Finding]:
                             f'объём требования не определён.'
                         ),
                         remediation_hint=_REMEDIATION,
+                        section_role=role.value,
                     ))
     return findings

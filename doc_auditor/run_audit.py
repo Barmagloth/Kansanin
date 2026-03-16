@@ -23,6 +23,7 @@ v0.5.0: multi-format pipeline (ingest → normalize → detect).
 """
 from __future__ import annotations
 import argparse
+from collections import defaultdict
 import json
 import sys
 import traceback
@@ -82,6 +83,51 @@ def _count_by_class(findings: list[Finding]) -> dict[str, int]:
     return dict(sorted(counts.items()))
 
 
+# ── Cross-detector dedup ─────────────────────────────────────────────────────
+# When two detectors fire on overlapping evidence within the same sentence,
+# keep the more specific one.  Rules are defined as (loser_id, winner_id)
+# pairs: if both match and spans overlap, the loser is dropped.
+
+_DEDUP_RULES: list[tuple[str, str]] = [
+    ("D001", "D002"),  # ESCAPE_CLAUSE is more specific than VAGUENESS
+]
+
+
+def _spans_overlap(a: tuple[int, int], b: tuple[int, int]) -> bool:
+    return a[0] < b[1] and b[0] < a[1]
+
+
+def _dedup_cross_detector(findings: list[Finding]) -> list[Finding]:
+    """Remove less-specific findings when two detectors overlap on the same evidence."""
+    if not _DEDUP_RULES:
+        return findings
+
+    # Build a quick lookup: (section_id, sentence_id) → list of findings
+    grouped: dict[tuple[str, str], list[Finding]] = defaultdict(list)
+    for f in findings:
+        grouped[(f.section_id, f.sentence_id)].append(f)
+
+    to_remove: set[int] = set()  # indices into `findings`
+
+    # Build index mapping: finding id(obj) → position in findings list
+    id_to_idx = {id(f): i for i, f in enumerate(findings)}
+
+    for group in grouped.values():
+        if len(group) < 2:
+            continue
+        for loser_id, winner_id in _DEDUP_RULES:
+            losers  = [f for f in group if f.defect_id == loser_id]
+            winners = [f for f in group if f.defect_id == winner_id]
+            for lo in losers:
+                for wi in winners:
+                    if _spans_overlap(lo.evidence_span, wi.evidence_span):
+                        to_remove.add(id_to_idx[id(lo)])
+
+    if not to_remove:
+        return findings
+    return [f for i, f in enumerate(findings) if i not in to_remove]
+
+
 def run(path: Path, use_allowlist: bool = True) -> list[Finding]:
     """Run full pipeline. Returns active findings (after allowlist filtering)."""
     raw = ingest_file(path)
@@ -89,6 +135,7 @@ def run(path: Path, use_allowlist: bool = True) -> list[Finding]:
     findings: list[Finding] = []
     for det in _ALL_DETECTORS:
         findings.extend(det(doc))
+    findings = _dedup_cross_detector(findings)
     findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
 
     if use_allowlist:
@@ -108,6 +155,7 @@ def run_with_traces(
     findings: list[Finding] = []
     for det in _ALL_DETECTORS:
         findings.extend(det(doc))
+    findings = _dedup_cross_detector(findings)
     findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
 
     if not use_allowlist:
