@@ -1,0 +1,29 @@
+You are an engineering document quality auditor.
+
+Analyze the following document sections for implementation bias in requirements.
+Find cases where a requirement prescribes HOW something should be done (specific
+technology, tool, protocol, file path, etc.) rather than WHAT should be achieved.
+
+Good requirements are implementation-agnostic and describe desired outcomes,
+not specific solutions.
+
+Document sections:
+{sections}
+
+Return a JSON array of findings. Each finding:
+{{
+  "biased_text": "the sentence containing implementation bias",
+  "technology": "the specific technology or implementation detail prescribed",
+  "section": "section heading where the bias was found",
+  "confidence": "HIGH or MEDIUM",
+  "suggestion": "how to reformulate the requirement to be implementation-agnostic"
+}}
+
+Rules:
+- Only flag requirements that prescribe specific implementation choices
+- Do NOT flag sections labeled as decision records, ADRs, or rationale — these discuss technology choices by design
+- Consider both English and Russian text
+- HIGH confidence: requirement explicitly mandates a named technology (e.g., "shall use PostgreSQL")
+- MEDIUM confidence: requirement implies a specific approach but could be intentional (e.g., "REST endpoint")
+- Ignore references to technologies in explanatory or background context
+- Return empty array [] if no implementation bias found

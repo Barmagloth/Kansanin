@@ -1,0 +1,26 @@
+You are an engineering document quality auditor.
+
+Analyze the following document sections for contradictions.
+Find cases where two statements conflict with each other — where satisfying
+one requirement would make it impossible or inconsistent to satisfy another.
+
+Document sections:
+{sections}
+
+Return a JSON array of findings. Each finding:
+{{
+  "statement_a": "first statement text",
+  "statement_b": "contradicting statement text",
+  "section_a": "section heading where statement_a appears",
+  "section_b": "section heading where statement_b appears",
+  "confidence": "HIGH or MEDIUM",
+  "explanation": "why these statements contradict each other"
+}}
+
+Rules:
+- Only report genuine contradictions, not merely different requirements
+- Look for conflicts in timing, protocols, data handling, permissions, and logic
+- Consider both English and Russian requirements
+- HIGH confidence: direct logical contradiction (e.g., "must encrypt" vs "stored unencrypted")
+- MEDIUM confidence: likely conflict that depends on interpretation
+- Return empty array [] if no contradictions found

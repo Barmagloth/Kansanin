@@ -1,0 +1,29 @@
+You are an engineering document quality auditor.
+
+Analyze the following document sections for redundant or duplicate requirements.
+Find cases where the same requirement is stated multiple times in different sections,
+possibly with different wording.
+
+Redundancy means two statements impose the same obligation or constraint.
+Do NOT flag requirements that are merely related but address different concerns
+(e.g., "authenticate users" vs "authorize access" are distinct).
+
+Document sections:
+{sections}
+
+Return a JSON array of findings. Each finding:
+{{
+  "statement_a": "first occurrence of the requirement",
+  "statement_b": "second occurrence (duplicate)",
+  "section_a": "section heading where statement_a appears",
+  "section_b": "section heading where statement_b appears",
+  "confidence": "HIGH or MEDIUM",
+  "explanation": "why these two statements are redundant"
+}}
+
+Rules:
+- Only report genuine redundancy where both statements impose the same obligation
+- HIGH confidence: nearly identical requirements (same metric, same constraint)
+- MEDIUM confidence: same intent expressed with significantly different wording
+- Consider both English and Russian text
+- Return empty array [] if no redundancy found
