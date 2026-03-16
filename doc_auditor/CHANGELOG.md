@@ -5,6 +5,20 @@
 
 ---
 
+## [0.17.0] — 2026-03-16
+
+### Added — Phase 3: D013, D015, D017 Tier 3 LLM detectors
+
+- **`detectors/d013_contradiction.py`** v0.1.0: D013 CONTRADICTION — heuristic: negation-based conflict detection with 3+ shared concept threshold. LLM mode via prompt template. 3 fixtures, 5 findings on corpus (heuristic).
+- **`detectors/d015_implementation_bias.py`** v0.1.0: D015 IMPLEMENTATION_BIAS — heuristic: 50+ technology patterns (databases, frameworks, protocols, cloud, MQ, infrastructure) + file paths, ports, IPs in normative context. LLM mode via prompt template. 4 fixtures, 7 findings on corpus.
+- **`detectors/d017_redundancy.py`** v0.1.0: D017 REDUNDANCY — heuristic: Jaccard similarity on cross-section sentences (0.6 EN / 0.5 RU threshold). LLM mode via prompt template. 3 fixtures, 0 heuristic findings on corpus (conservative — LLM mode catches more).
+
+### Summary
+- 16 detectors total: 11 Tier 1 (regex) + 1 Tier 2 (NLP) + 4 Tier 3 (LLM + heuristic fallback)
+- Corpus: 166 Tier 1, +7 D010, +11 D016, +5 D013, +7 D015, +0 D017
+
+---
+
 ## [0.16.0] — 2026-03-16
 
 ### Added — LLM/NLP Tier Foundation + D010 + D016
