@@ -8,20 +8,70 @@ Blocks ambiguous, non-deterministic, and structurally weak requirements before t
 
 ## What it does
 
-Kansanin treats engineering documents as implementation contracts, not prose. It performs regex-based static analysis on Markdown specs, SRS documents, and ADRs, flagging:
+Kansanin treats engineering documents as implementation contracts, not prose. It performs static analysis on Markdown specs, SRS documents, and ADRs across three tiers:
+
+### Tier 1 — Deterministic (regex + heuristics, always on)
 
 | Detector | What it catches |
 |----------|----------------|
 | **D001** VAGUENESS | "quickly", "as needed", "при необходимости" — unmeasurable terms in normative sections |
 | **D002** ESCAPE_CLAUSE | "if possible", "where applicable" — loopholes that void requirements |
+| **D003** UNDEFINED_ACRONYM | Acronyms used without definition on first use |
 | **D004** OPEN_ENDED_LIST | "etc.", "и т.д." — unbounded scope in specifications |
 | **D005** PLACEHOLDER | TBD, TODO, FIXME, "будет уточнено" — unfinished sections |
+| **D006** MISSING_PRIORITY | Requirements without priority markers (SHALL/SHOULD/MAY) |
+| **D007** UNTESTABLE | Untestable/unmeasurable requirements |
 | **D008** PASSIVE_WITHOUT_AGENT | "shall be implemented" without saying by whom |
 | **D009** COMPOSITE_REQUIREMENT | Multiple obligations packed into one sentence |
 | **D012** AMBIGUOUS_REFERENCE | Pronouns with 2+ possible antecedents in normative context |
 | **D018** ADR_ANTIPATTERN | Missing alternatives, rationale, consequences; thin sections |
 
-All detectors are bilingual (EN + RU), section-role aware, and confidence-gated. The current layer is pure regex + heuristics — deterministic, reproducible, zero external dependencies. An LLM-powered analysis layer may be added later for deeper semantic checks.
+### Tier 2 — NLP (opt-in, `--nlp`)
+
+| Detector | What it catches |
+|----------|----------------|
+| **D010** READABILITY | Flesch score, sentence complexity metrics |
+
+### Tier 3 — LLM (opt-in, `--llm`)
+
+| Detector | What it catches |
+|----------|----------------|
+| **D013** CONTRADICTION | Contradicting requirements across sections |
+| **D015** IMPLEMENTATION_BIAS | Implementation-specific details (technology names, ports, file paths) in normative requirements |
+| **D016** TERMINOLOGY_INCONSISTENCY | Inconsistent terminology for the same concept across sections |
+| **D017** REDUNDANCY | Redundant/duplicate requirements across sections |
+
+All Tier 3 detectors have a **heuristic fallback** — they work without an LLM provider (reduced coverage), and fall back to heuristics automatically if the LLM call fails.
+
+All detectors are bilingual (EN + RU), section-role aware, and confidence-gated.
+
+---
+
+## Architecture
+
+Three-tier pipeline:
+
+```
+ingest/  (format-dependent: Markdown → RawDocument)
+   ↓
+normalize/  (format-independent: RawDocument → Document → Section → Sentence)
+   ↓
+detectors/  (Tier 1: regex + heuristics | Tier 2: NLP | Tier 3: LLM)
+   ↓
+allowlist/  (post-filter with traceable suppression)
+   ↓
+policy gate  (exit code based on severity threshold)
+```
+
+**Core** (Tier 1) is stdlib-only — zero external dependencies. Tier 2/3 are opt-in extras:
+
+```bash
+pip install kansanin[nlp]      # Tier 2: spaCy + textstat
+pip install kansanin[llm]      # Tier 3: openai + anthropic SDKs
+pip install kansanin[llm-onnx] # Tier 3: local ONNX embeddings
+```
+
+Section roles (normative, explanatory, decision_record, suppressed) are classified from headings and control which detectors fire and at what severity.
 
 ---
 
@@ -66,20 +116,11 @@ python doc_auditor/run_audit.py spec.md --fail-on critical
 
 ```
 ──────────────────────────────────────────────────────────────
-  Kansanin v0.11 · api_gateway_spec.md
+  Kansanin v0.18 · api_gateway_spec.md
 ──────────────────────────────────────────────────────────────
   Findings: 27  |  🔴 10 critical · 🟠 15 high · 🟡 2 medium
   Classes:  ESCAPE_CLAUSE:7  OPEN_ENDED_LIST:4  PASSIVE_WITHOUT_AGENT:5  PLACEHOLDER:10  VAGUENESS:1
   ❌ POLICY FAILED: 25 finding(s) at or above high
-```
-
-### CLI output (policy passed)
-
-```
-──────────────────────────────────────────────────────────────
-  Kansanin v0.11 · technical_spec.md
-──────────────────────────────────────────────────────────────
-  ✅  No policy violations.  (--fail-on high)
 ```
 
 ### JSON summary (for CI consumption)
@@ -123,9 +164,36 @@ python doc_auditor/run_audit.py spec.md --json
 
 # Save report to file
 python doc_auditor/run_audit.py spec.md --out report.json
+
+# Enable LLM tier (Tier 3) for deeper analysis
+python doc_auditor/run_audit.py spec.md --llm --llm-provider openai
+
+# Launch web dashboard
+python doc_auditor/run_audit.py --serve
 ```
 
-No external dependencies. Python 3.11+ and stdlib only.
+No external dependencies for core analysis. Python 3.11+ and stdlib only.
+
+---
+
+## Web dashboard
+
+Kansanin includes a built-in web dashboard for interactive exploration of audit results:
+
+```bash
+python doc_auditor/run_audit.py --serve
+python doc_auditor/run_audit.py --serve --port 9000
+python doc_auditor/run_audit.py path/to/docs/ --serve
+```
+
+Features:
+- **File tree navigator** (left panel) — browse and select documents for audit
+- **Findings table** (center) — severity filtering, text search, grouped by file
+- **Detail panel** (right) — evidence, description, remediation hints, LLM metadata
+- **Export JSON** — download full audit report
+- **NLP/LLM toggles** — enable optional analysis tiers from the UI
+
+No external dependencies — uses stdlib `http.server` and a single HTML file with vanilla JS.
 
 ---
 
@@ -152,8 +220,6 @@ Runs on staged `.md` files. Fails the commit if any finding meets or exceeds the
 The repo includes a ready-to-use workflow at `.github/workflows/kansanin.yml`.
 
 On pull requests it audits only changed `.md` files. On push to main it audits `docs/`. JSON reports are uploaded as artifacts.
-
-To use in your own repo, copy the workflow file or reference it:
 
 ```yaml
 # .github/workflows/docs.yml
@@ -234,32 +300,11 @@ Suppressed findings are hidden by default but visible with `--show-suppressed`, 
 
 ---
 
-## Architecture
-
-Three-layer pipeline, fully deterministic:
-
-```
-ingest/  (format-dependent: Markdown → RawDocument)
-   ↓
-normalize/  (format-independent: RawDocument → Document → Section → Sentence)
-   ↓
-detectors/  (regex + heuristics → Findings)
-   ↓
-allowlist/  (post-filter with traceable suppression)
-   ↓
-policy gate  (exit code based on severity threshold)
-```
-
-Section roles (normative, explanatory, decision_record, suppressed) are classified from headings and control which detectors fire and at what severity.
-
----
-
 ## Non-goals
 
 Things Kansanin deliberately does not do:
 
-- **Prose linting.** No readability scores, no style rules, no grammar checks. Use Vale for that.
-- **LLM-powered analysis (for now).** The current detector layer is fully deterministic — same input, same output. An LLM layer for deeper semantic analysis (e.g. logic consistency, cross-reference validation) is a possible future addition, but as a separate opt-in tier, not a replacement for the deterministic base.
+- **Prose linting.** No style rules, no grammar checks. Use Vale for that.
 - **Cross-document tracing.** Each document is audited independently. Requirement traceability matrices are a different tool.
 - **Auto-fix.** Kansanin reports defects. Fixing requirements is a human job.
 
