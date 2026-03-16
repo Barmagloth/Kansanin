@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-16
-# Версия пакета: v0.15.0
+# Версия пакета: v0.16.0
 
 ---
 
@@ -11,7 +11,7 @@
 Входные форматы: Markdown (реализован); TXT, DOCX, PDF — подготовлен контракт ingestor-а.
 Выход: findings с evidence_span, severity, confidence, remediation_hint.
 
-Язык: Python 3.11+. Зависимости: только stdlib + regex (встроен). Tier-1 — regex/heuristics. LLM-tier возможен как отдельный слой.
+Язык: Python 3.11+. Core: только stdlib. Opt-in extras: `pip install kansanin[nlp]` (spaCy, textstat), `pip install kansanin[llm]` (openai, anthropic SDKs), `pip install kansanin[llm-onnx]` (ONNX Runtime). Tier 1 — regex/heuristics (always). Tier 2 — NLP (--nlp). Tier 3 — LLM (--llm).
 
 ---
 
@@ -22,7 +22,7 @@ pyproject.toml              # pip-installable, CLI entry point `kansanin` (в к
 doc_auditor/
 ├── models/
 │   ├── raw.py                 # RawBlock, RawDocument, StructureConfidence (v0.5.0)
-│   └── canonical.py           # Document, Section, Sentence, Finding (v0.5.0)
+│   └── canonical.py           # Document, Section, Sentence, Finding (v0.6.0)
 ├── ingest/
 │   ├── base.py                # BaseIngestor Protocol, IngestCapabilities (v0.5.0)
 │   ├── markdown_ingestor.py   # Markdown → RawDocument (v0.5.0)
@@ -44,14 +44,24 @@ doc_auditor/
 │   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.2.0)
 │   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.1.0)
 │   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.2.0)
-│   └── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.2.0)
+│   ├── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.2.0)
+│   ├── d010_readability.py      # READABILITY_METRIC (v0.1.0, Tier 2 NLP)
+│   └── d016_terminology.py      # TERMINOLOGY_INCONSISTENCY (v0.1.0, Tier 3 LLM + heuristic)
+├── llm/                           # LLM/NLP subsystem
+│   ├── __init__.py               # availability checks
+│   ├── provider.py               # LLMProvider Protocol + LLMResponse
+│   ├── config.py                 # 3-level config: YAML → env → CLI
+│   ├── registry.py               # lazy provider lookup
+│   ├── util.py                   # chunking, retry, token estimation
+│   ├── providers/                # 5 providers: openai, anthropic, deepseek, onnx, spacy
+│   └── prompts/                  # prompt templates for Tier 3 detectors
 ├── allowlist/
 │   ├── engine.py              # 3-level allowlist engine (v0.2.0)
 │   ├── schema.py              # schema validation (v0.1.0)
 │   └── validate_allowlist.py  # CLI validator (v0.1.0)
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.12.0)
-├── __init__.py                # __version__ = "0.15.0"
+├── run_audit.py               # CLI точка входа (v0.16.0)
+├── __init__.py                # __version__ = "0.16.0"
 ├── fixtures/
 │   ├── good_placeholders.md
 │   ├── good_escape_clauses.md

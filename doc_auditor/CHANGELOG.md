@@ -5,6 +5,38 @@
 
 ---
 
+## [0.16.0] — 2026-03-16
+
+### Added — LLM/NLP Tier Foundation + D010 + D016
+
+- **`llm/`** package: Provider Protocol, config system (3-level: YAML → env → CLI), lazy provider registry.
+  - `provider.py`: `LLMProvider` Protocol + `LLMResponse` dataclass.
+  - `config.py`: `KansaninConfig`, `LLMConfig`, `NLPConfig` — loads `.kansanin.yaml`, env vars, CLI overrides.
+  - `registry.py`: lazy provider lookup for openai, anthropic, deepseek, onnx, spacy.
+  - `providers/`: 5 providers — OpenAI (SDK+urllib fallback), Anthropic (SDK+urllib fallback), DeepSeek (OpenAI-compatible), ONNX Runtime (local embeddings), spaCy (local NLP).
+  - `util.py`: `chunk_text()`, `estimate_tokens()`, `retry_with_backoff()`.
+  - `prompts/d016_terminology.txt`: prompt template for LLM-based terminology analysis.
+- **`detectors/d010_readability.py`** v0.1.0: D010 READABILITY_METRIC — Tier 2 NLP detector. D010.1 LONG_SENTENCE (>50 words normative / >60 decision_record), MEDIUM severity. D010.2 COMPLEX_SECTION (avg >30 / >35 words), LOW severity. Section gating: normative + decision_record only. 5 fixtures.
+- **`detectors/d016_terminology.py`** v0.1.0: D016 TERMINOLOGY_INCONSISTENCY — Tier 3 LLM detector with heuristic fallback. Heuristic mode: 13 synonym groups (6 EN, 5 RU + 2 shared), frequency-based detection. LLM mode: prompt → JSON parsing via provider API. 4 fixtures, 11 findings on corpus.
+
+### Changed
+- `models/canonical.py` v0.6.0: +3 optional LLM fields on Finding (`llm_provider`, `llm_model`, `llm_confidence_raw`).
+- `run_audit.py` v0.16.0: cross-detector dedup (`_dedup_cross_detector`), lazy Tier 2/3 loading, CLI flags `--llm`, `--nlp`, `--llm-provider`, `--llm-model`.
+- `pyproject.toml`: added optional-dependencies: `nlp`, `llm`, `llm-onnx`, `llm-all`. Added `llm/prompts/*.txt` to package-data.
+- `calibration/calibrate.py` v0.4.0: integrated cross-detector dedup.
+
+### Fixed
+- D001↔D002 double-hit on overlapping spans (cross-detector dedup removes 3 duplicates on corpus).
+- D004 heading heuristics aligned with `normalize/suppression.py` (removed divergent legacy regex).
+
+### Verified
+- Corpus 17 docs: 166 Tier 1 findings (down from 169 after dedup), +7 D010, +11 D016 (heuristic mode).
+- All Tier 1 fixtures pass. D010 (5 fixtures) and D016 (4 fixtures) pass.
+- `pip install .` → `kansanin FILE` works without LLM deps.
+- `--llm` / `--nlp` flags graceful-error when extras not installed.
+
+---
+
 ## [0.15.0] — 2026-03-16
 
 ### Added — Phase 2: D003 + D006
