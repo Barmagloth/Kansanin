@@ -270,7 +270,8 @@ def print_report(
     policy_violated: bool = False,
 ) -> None:
     print(f"\n{'─'*62}")
-    print(f"  Kansanin v0.11 · {doc_path.name}")
+    from doc_auditor import __version__
+    print(f"  Kansanin v{__version__} · {doc_path.name}")
     print(f"{'─'*62}")
 
     # allowlist summary
