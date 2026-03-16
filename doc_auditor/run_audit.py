@@ -42,8 +42,9 @@ from detectors.d009_composite_requirements import detect as detect_d009
 from detectors.d018_adr_antipatterns import detect as detect_d018
 from detectors.d012_ambiguous_references import detect as detect_d012
 from detectors.d008_passive_voice import detect as detect_d008
+from detectors.d007_untestable import detect as detect_d007
 
-_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d008, detect_d009, detect_d012, detect_d018]
+_ALL_DETECTORS = [detect_d001, detect_d002, detect_d004, detect_d005, detect_d007, detect_d008, detect_d009, detect_d012, detect_d018]
 
 # Exit codes
 EXIT_OK       = 0  # policy passed — no findings above threshold

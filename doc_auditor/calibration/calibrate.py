@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # calibration/calibrate.py
-# version: 0.3.0
+# version: 0.4.0
 """
 Калибровочный harness.
 
@@ -27,8 +27,9 @@ from collections import defaultdict
 _ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(_ROOT))
 
-from markdown_ingest import ingest_markdown
-from document_model import Finding
+from ingest.registry import ingest_file
+from normalize.document_builder import build_document
+from models.canonical import Finding
 from detectors.d001_vagueness import detect as d001
 from detectors.d005_placeholder import detect as d005
 from detectors.d002_escape_clauses import detect as d002
@@ -37,8 +38,9 @@ from detectors.d009_composite_requirements import detect as d009
 from detectors.d018_adr_antipatterns import detect as d018
 from detectors.d012_ambiguous_references import detect as d012
 from detectors.d008_passive_voice import detect as d008
+from detectors.d007_untestable import detect as d007
 
-_DETECTORS = [d001, d005, d002, d004, d008, d009, d012, d018]
+_DETECTORS = [d001, d005, d002, d004, d007, d008, d009, d012, d018]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
@@ -54,7 +56,8 @@ def run_corpus(corpus_dir: Path) -> list[dict]:
     all_findings: list[dict] = []
     for path in md_files:
         print(f"  → {path.name}", end=" ")
-        doc = ingest_markdown(path)
+        raw = ingest_file(path)
+        doc = build_document(raw)
         findings: list[Finding] = []
         for det in _DETECTORS:
             findings.extend(det(doc))
