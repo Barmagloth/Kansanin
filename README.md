@@ -147,46 +147,150 @@ python doc_auditor/run_audit.py spec.md --fail-on critical
 
 ---
 
-## Quick start
+## Installation
+
+### Requirements
+
+- Python 3.11+
+- No external dependencies for core analysis (Tier 1)
+
+### From source (recommended)
 
 ```bash
 git clone https://github.com/Barmagloth/Kansanin.git
 cd Kansanin
+```
 
+That's it. The core engine runs on stdlib only — no `pip install` required.
+
+### As a package
+
+```bash
+pip install git+https://github.com/Barmagloth/Kansanin.git
+```
+
+After installation the `kansanin` command is available globally:
+
+```bash
+kansanin spec.md
+kansanin docs/*.md --fail-on high --json
+kansanin --serve
+```
+
+### Optional tiers
+
+Tier 2 (NLP) and Tier 3 (LLM) require additional packages:
+
+```bash
+# Tier 2: readability metrics (spaCy + textstat)
+pip install kansanin[nlp]
+
+# Tier 3: LLM-powered semantic analysis (OpenAI + Anthropic SDKs)
+pip install kansanin[llm]
+
+# Tier 3: local ONNX embeddings (offline, no API keys)
+pip install kansanin[llm-onnx]
+
+# Everything at once
+pip install kansanin[llm-all]
+```
+
+### LLM provider setup
+
+To use Tier 3 with an API provider, set the corresponding environment variable:
+
+```bash
+# OpenAI
+export OPENAI_API_KEY=sk-...
+
+# Anthropic
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# DeepSeek
+export DEEPSEEK_API_KEY=sk-...
+```
+
+Or configure via `.kansanin.yaml` in the project root:
+
+```yaml
+llm:
+  enabled: true
+  provider: anthropic          # openai | anthropic | deepseek | onnx
+  model: claude-sonnet-4-20250514
+  temperature: 0.0
+  timeout_seconds: 30
+```
+
+---
+
+## Usage
+
+### Basic CLI
+
+```bash
 # Audit a single document
 python doc_auditor/run_audit.py path/to/spec.md
 
 # Audit multiple documents
-python doc_auditor/run_audit.py docs/*.md --fail-on high
+python doc_auditor/run_audit.py docs/*.md
 
-# JSON output
-python doc_auditor/run_audit.py spec.md --json
-
-# Save report to file
-python doc_auditor/run_audit.py spec.md --out report.json
-
-# Enable LLM tier (Tier 3) for deeper analysis
-python doc_auditor/run_audit.py spec.md --llm --llm-provider openai
-
-# Launch web dashboard
-python doc_auditor/run_audit.py --serve
+# Custom severity threshold (default: high)
+python doc_auditor/run_audit.py spec.md --fail-on medium
+python doc_auditor/run_audit.py spec.md --fail-on critical
 ```
 
-No external dependencies for core analysis. Python 3.11+ and stdlib only.
-
----
-
-## Web dashboard
-
-Kansanin includes a built-in web dashboard for interactive exploration of audit results:
+### Output formats
 
 ```bash
+# Human-readable report (default)
+python doc_auditor/run_audit.py spec.md
+
+# JSON to stdout
+python doc_auditor/run_audit.py spec.md --json
+
+# Save JSON report to file
+python doc_auditor/run_audit.py spec.md --out report.json
+
+# Show suppressed findings alongside active ones
+python doc_auditor/run_audit.py spec.md --show-suppressed
+
+# Disable allowlist filtering entirely
+python doc_auditor/run_audit.py spec.md --no-allowlist
+```
+
+### Tier 2/3 analysis
+
+```bash
+# Enable NLP tier (readability metrics)
+python doc_auditor/run_audit.py spec.md --nlp
+
+# Enable LLM tier (semantic analysis)
+python doc_auditor/run_audit.py spec.md --llm
+
+# Specify LLM provider and model
+python doc_auditor/run_audit.py spec.md --llm --llm-provider openai --llm-model gpt-4o
+python doc_auditor/run_audit.py spec.md --llm --llm-provider anthropic
+
+# All tiers at once
+python doc_auditor/run_audit.py spec.md --nlp --llm --llm-provider anthropic
+```
+
+Without `--llm`, Tier 3 detectors still run in **heuristic fallback** mode (lower coverage, but no API keys needed).
+
+### Web dashboard
+
+```bash
+# Launch on default port (8088), opens browser
 python doc_auditor/run_audit.py --serve
+
+# Custom port
 python doc_auditor/run_audit.py --serve --port 9000
+
+# Specify root directory for file tree
 python doc_auditor/run_audit.py path/to/docs/ --serve
 ```
 
-Features:
+The dashboard provides:
 - **File tree navigator** (left panel) — browse and select documents for audit
 - **Findings table** (center) — severity filtering, text search, grouped by file
 - **Detail panel** (right) — evidence, description, remediation hints, LLM metadata
@@ -194,6 +298,29 @@ Features:
 - **NLP/LLM toggles** — enable optional analysis tiers from the UI
 
 No external dependencies — uses stdlib `http.server` and a single HTML file with vanilla JS.
+
+### CLI reference
+
+```
+usage: run_audit.py [FILE ...] [options]
+
+positional arguments:
+  FILE                    Document(s) to audit (.md)
+
+options:
+  --json                  Output JSON instead of human-readable report
+  --out FILE              Save JSON report to file
+  --show-suppressed       Show findings suppressed by allowlist
+  --no-allowlist          Disable allowlist filtering
+  --fail-on SEVERITY      Exit 1 if findings at or above this severity
+                          (critical|high|medium|low|info, default: high)
+  --nlp                   Enable NLP tier (Tier 2)
+  --llm                   Enable LLM tier (Tier 3)
+  --llm-provider NAME     LLM provider (openai|anthropic|deepseek|onnx)
+  --llm-model MODEL       LLM model name
+  --serve                 Launch web dashboard instead of CLI audit
+  --port PORT             Web dashboard port (default: 8088)
+```
 
 ---
 
