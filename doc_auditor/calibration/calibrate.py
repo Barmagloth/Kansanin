@@ -39,8 +39,10 @@ from detectors.d018_adr_antipatterns import detect as d018
 from detectors.d012_ambiguous_references import detect as d012
 from detectors.d008_passive_voice import detect as d008
 from detectors.d007_untestable import detect as d007
+from detectors.d006_missing_priority import detect as d006
+from detectors.d003_undefined_acronym import detect as d003
 
-_DETECTORS = [d001, d005, d002, d004, d007, d008, d009, d012, d018]
+_DETECTORS = [d001, d002, d003, d004, d005, d006, d007, d008, d009, d012, d018]
 _SEV_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
 
