@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.10.1
+# Detector Matrix — doc_auditor v0.15.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -38,6 +38,24 @@
 
 ---
 
+## D003 · UNDEFINED_ACRONYM
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d003_undefined_acronym.py` v0.1.0 |
+| **Класс дефекта** | UNDEFINED_ACRONYM |
+| **Trigger basis** | Трёхфазный детектор: 1) Scan definitions — ищет паттерны определений акронимов (скобки, «т.е.», «i.e.») во ВСЕХ секциях. 2) Collect usage — собирает использования акронимов (≥2 заглавные буквы) в normative + decision_record секциях. 3) Report undefined — акронимы с usage без definition. Исключает common acronyms: API, URL, HTTP, HTTPS, JSON, XML, HTML, CSS, SQL, REST, SOAP, JWT, OAuth, TLS, SSL, TCP, UDP, IP, DNS, SSH, FTP, CLI, GUI, SDK, IDE, CI, CD, OS, RAM, CPU, GPU, SSD, HDD, PDF, CSV, YAML, TOML, UUID, URI, RFC, IEEE, ISO, ГОСТ, ТЗ, СТЗ, ТТЗ, АСУ, СУБД, БД, ПО, ОС, ИТ, ИС, ЛВС, ИБ. Билингвальный EN+RU. |
+| **Severity rules** | Всегда MEDIUM — неопределённый акроним затрудняет понимание, но не делает требование невыполнимым. |
+| **Confidence rules** | HIGH: ≥3 использований акронима (систематическое использование без определения). MEDIUM: 1–2 использования (может быть единичная ошибка). |
+| **Suppression** | 1) Block-level + inline через `document_builder`. 2) `is_suppressed_heading()`. 3) Common acronyms list — не проверяются. |
+| **Section-role dependence** | Частичная. Definitions ищутся во всех секциях (glossary может содержать определения). Usage проверяется только в normative + decision_record. |
+| **Fixtures** | `fixtures/d003/` — 6 fixture-файлов. |
+| **Known edge cases** | Common acronyms list конечен — domain-specific общеизвестные акронимы могут дать FP. Определения в таблицах/code blocks могут быть пропущены (block-level suppression). |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | 26 findings (все UNDEFINED_ACRONYM). |
+
+---
+
 ## D004 · OPEN_ENDED_LIST
 
 | Параметр | Значение |
@@ -67,6 +85,42 @@
 | **Section-role dependence** | Нет. Плейсхолдер — дефект в любой секции. |
 | **Fixtures** | `good_placeholders.md` |
 | **Known edge cases** | `section X.Y` может совпасть с реальной нумерацией в некоторых нотациях (поэтому MEDIUM confidence). `TBD` внутри inline code подавляется корректно. |
+
+---
+
+## D006 · MISSING_PRIORITY
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d006_missing_priority.py` v0.1.0 |
+| **Класс дефекта** | MISSING_PRIORITY |
+| **Trigger basis** | Контекстный детектор: срабатывает ТОЛЬКО когда документ использует приоритетную схему (≥3 приоритизированных требования). Определяет приоритеты по: EN bracket markers `[MUST]`, `[SHOULD]`, `[MAY]`, `[SHALL]`; MoSCoW (Must Have, Should Have, Could Have, Won't Have); RU markers `[ОБЯЗАТЕЛЬНО]`, `[РЕКОМЕНДУЕТСЯ]`, `[ЖЕЛАТЕЛЬНО]`; inline priority (Priority: High/Medium/Low, Приоритет: Высокий/Средний/Низкий). Находит требования в normative секциях без приоритетного маркера. |
+| **Severity rules** | Всегда LOW — отсутствие приоритета не делает требование дефектным, но затрудняет планирование. |
+| **Confidence rules** | HIGH: ≥5 приоритизированных требований (устоявшаяся схема). MEDIUM: 3–4 приоритизированных (может быть частичная схема). |
+| **Suppression** | 1) Block-level + inline через `document_builder`. 2) `is_suppressed_heading()`. 3) Contextual gate: если <3 приоритизированных требований — детектор полностью молчит. |
+| **Section-role dependence** | Строгая: только normative секции для поиска приоритетов и отсутствия приоритетов. |
+| **Fixtures** | `fixtures/d006/` — 5 fixture-файлов. |
+| **Known edge cases** | Документы с гибридной приоритизацией (часть по MoSCoW, часть по bracket) — порог ≥3 считает все стили вместе. Inline priority в нестандартном формате может не распознаваться. |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | 0 findings (ни один документ корпуса не использует систематическую приоритизацию). |
+
+---
+
+## D007 · UNTESTABLE_REQUIREMENT
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d007_untestable_requirement.py` v0.1.0 |
+| **Класс дефекта** | UNTESTABLE_REQUIREMENT |
+| **Trigger basis** | 10 билингвальных regex-паттернов в 2 tier-ах. **HIGH confidence (Tier 1):** subjective adjectives (user-friendly, интуитивный, удобный), unmeasurable performance (fast enough, достаточно быстро), absolute claims (100% uptime, нулевой простой). **MEDIUM confidence (Tier 2):** vague comparison (better than, лучше чем), subjective satisfaction (satisfactory, удовлетворительный). RU + EN. |
+| **Severity rules** | Всегда HIGH — нетестируемое требование не может быть верифицировано по ISO 29148. |
+| **Confidence rules** | HIGH: Tier 1 паттерны (subjective adjectives, unmeasurable performance, absolute claims). MEDIUM: Tier 2 паттерны (vague comparison, subjective satisfaction). |
+| **Suppression** | 1) Block-level + inline через `document_builder`. 2) `is_suppressed_heading()`. 3) Section role gating: только `normative`. |
+| **Section-role dependence** | Строгая: ТОЛЬКО normative. Explanatory, decision_record, suppressed, unknown — skip. |
+| **Fixtures** | `fixtures/d007/` — 6 fixture-файлов. |
+| **Known edge cases** | «user-friendly» в пояснительном тексте — skip (normative-only gating). Абсолютные claims с конкретными метриками (99.9% uptime) — могут совпасть, но это TP (нужен допустимый диапазон). |
+| **Allowlist** | Нет entries. |
+| **Corpus results** | Включены в общий подсчёт 143 findings (Phase 1). |
 
 ---
 
@@ -155,8 +209,11 @@
 |---|---|---|---|---|---|
 | D001 | VAGUENESS | HIGH (normative) / MEDIUM (decision_record) | HIGH (с модальным) / MEDIUM (без) | Полная (4 роли) | block-level + inline + heading + role skip |
 | D002 | ESCAPE_CLAUSE | HIGH (всегда) | HIGH / MEDIUM (по паттерну) | Нет (только suppression) | block-level + inline + heading |
+| D003 | UNDEFINED_ACRONYM | MEDIUM (всегда) | HIGH (≥3 uses) / MEDIUM (1–2) | Частичная (defs: все, usage: normative+decision_record) | block-level + inline + heading + common acronyms list |
 | D004 | OPEN_ENDED_LIST | HIGH (normative heading) / MEDIUM (default) | HIGH (всегда) | Частичная (свои heuristics) | block-level + inline + heading |
 | D005 | PLACEHOLDER | CRITICAL (всегда) | HIGH / MEDIUM (по паттерну) | Нет | block-level + inline + heading |
+| D006 | MISSING_PRIORITY | LOW (всегда) | HIGH (≥5 prioritized) / MEDIUM (3–4) | Строгая (только normative) | block-level + inline + heading + contextual gate (≥3 prioritized) |
+| D007 | UNTESTABLE_REQUIREMENT | HIGH (всегда, только normative) | HIGH (Tier 1) / MEDIUM (Tier 2) | Строгая (ТОЛЬКО normative) | block-level + inline + heading + role skip |
 | D008 | PASSIVE_WITHOUT_AGENT | HIGH (всегда, только normative) | HIGH (shall/must) / MEDIUM (остальные) | Строгая (ТОЛЬКО normative) | block-level + inline + heading + role skip + agent detection + safe passives |
 | D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
 | D012 | AMBIGUOUS_REFERENCE | HIGH (normative) / MEDIUM (rest) | MEDIUM (modal/multi-pronoun) / LOW (skip) | Полная (4 роли, explanatory skip) | block-level + inline + heading + role skip + pronoun filters |

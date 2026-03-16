@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # doc_auditor — контекст проекта для Cowork-сессий
-# Последнее обновление: 2026-03-12
-# Версия пакета: v0.13.0
+# Последнее обновление: 2026-03-16
+# Версия пакета: v0.15.0
 
 ---
 
@@ -18,6 +18,7 @@
 ## Структура пакета
 
 ```
+pyproject.toml              # pip-installable, CLI entry point `kansanin` (в корне репо)
 doc_auditor/
 ├── models/
 │   ├── raw.py                 # RawBlock, RawDocument, StructureConfidence (v0.5.0)
@@ -35,8 +36,11 @@ doc_auditor/
 │   ├── d001_vague_terms_ru.txt
 │   ├── d001_vague_terms_en.txt
 │   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.1)
+│   ├── d003_undefined_acronym.py # UNDEFINED_ACRONYM (v0.1.0)
 │   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
 │   ├── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
+│   ├── d006_missing_priority.py # MISSING_PRIORITY (v0.1.0)
+│   ├── d007_untestable_requirement.py # UNTESTABLE_REQUIREMENT (v0.1.0)
 │   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.2.0)
 │   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.1.0)
 │   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.2.0)
@@ -46,10 +50,8 @@ doc_auditor/
 │   ├── schema.py              # schema validation (v0.1.0)
 │   └── validate_allowlist.py  # CLI validator (v0.1.0)
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.10.0)
-├── document_model.py          # backward-compat shim → models.canonical
-├── markdown_ingest.py         # backward-compat shim → ingest + normalize
-├── section_roles.py           # backward-compat shim → normalize.suppression
+├── run_audit.py               # CLI точка входа (v0.12.0)
+├── __init__.py                # __version__ = "0.15.0"
 ├── fixtures/
 │   ├── good_placeholders.md
 │   ├── good_escape_clauses.md
@@ -59,6 +61,9 @@ doc_auditor/
 │   ├── suppression_vagueness.md
 │   ├── sentence_split_edge_cases.md
 │   ├── expected_vagueness.json
+│   ├── d003/                   # 6 fixture-файлов для D003 undefined acronym
+│   ├── d006/                   # 5 fixture-файлов для D006 missing priority
+│   ├── d007/                   # 6 fixture-файлов для D007 untestable requirement
 │   ├── d008/                   # 6 fixture-файлов для D008 passive voice
 │   ├── d012/                   # 6 fixture-файлов для D012 ambiguous references
 │   └── d018/                   # 8 fixture-файлов для D018 ADR antipatterns
@@ -107,11 +112,11 @@ python calibration/calibrate.py calibration/corpus/ --report  # отчёт
 |---|---|---|
 | D001 | VAGUENESS | ✅ v0.1.0 (словари RU+EN, section gating, modal escalation) |
 | D002 | ESCAPE_CLAUSE | ✅ v0.1.0 |
-| D003 | WEAK_MODAL | ⬜ не реализован |
+| D003 | UNDEFINED_ACRONYM | ✅ v0.1.0 (трёхфазный: scan defs → collect usage → report, EN+RU) |
 | D004 | OPEN_ENDED_LIST | ✅ v0.1.0 |
 | D005 | PLACEHOLDER | ✅ v0.1.0 |
-| D006 | NEGATIVE_REQUIREMENT | ⬜ не реализован |
-| D007 | COMPARATIVE_WITHOUT_BASELINE | ⬜ не реализован |
+| D006 | MISSING_PRIORITY | ✅ v0.1.0 (контекстный: ≥3 prioritized reqs, MoSCoW, bracket markers) |
+| D007 | UNTESTABLE_REQUIREMENT | ✅ v0.1.0 (10 паттернов, 2 tier-а, только normative) |
 
 ### Эшелон 1.5 — Tier 1.5 (regex + heuristics)
 | ID | Класс | Статус |
@@ -169,7 +174,7 @@ message, remediation_hint, matched_term, term_category, section_role.
 
 ## Calibration — итоги (v0.1)
 
-Корпус: 4 синтетических + 7 реальных документов.
+Корпус: 17 документов (4 синтетических + 6 реальных + 7 open-source docs). 169 total findings.
 
 **Precision по классам (синтетический корпус):**
 | Класс | Est. Precision |
@@ -218,11 +223,21 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 
 ## Что открыто / следующие шаги
 
-**Стабилизация (текущий приоритет):**
+**Выполнено (Phase 1 + Phase 2):**
+- ✅ D007 UNTESTABLE_REQUIREMENT — реализован v0.1.0 (Phase 1, коммит 30ff30d)
+- ✅ D003 UNDEFINED_ACRONYM — реализован v0.1.0 (Phase 2, коммит bdc04b4)
+- ✅ D006 MISSING_PRIORITY — реализован v0.1.0 (Phase 2, коммит bdc04b4)
+- ✅ `pyproject.toml` — pip-installable, CLI entry point `kansanin`
+- ✅ `calibrate.py` v0.4.0 — мигрирован на новый API
+- ✅ Backward-compat shims удалены (document_model.py, markdown_ingest.py, section_roles.py)
+- ✅ Корпус расширен до 17 документов, 169 findings
 - ✅ `baseline_v0_5_x.md` — зафиксирован
-- ✅ `evaluation_summary_v0_5_0.md` — собран (80 findings, 0 FP на реальных)
+- ✅ `evaluation_summary_v0_5_0.md` — собран
 - ✅ Allowlist v0.6.0 — реализован (3-level, exact match, defect_id scoping, trace)
-- Расширить корпус реальных документов (6/10 → нужно ≥ 10 для Tier-2 entry)
+
+**Phase 2 hardening (текущий приоритет):**
+- D001+D002 cross-detector dedup — «при необходимости» double-hit
+- D004 heading heuristics alignment с `normalize/suppression.py`
 
 **Allowlist iterations (AL-2, AL-3):**
 - AL-2: reason required (enforce), expires support, section-role scoping (уже в engine, нужны тесты)
@@ -234,13 +249,12 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 
 **Следующий детектор-кандидат:**
 - D010 Readability / complexity (мягкий quality layer)
-- D003 WEAK_MODAL / D006 NEGATIVE_REQUIREMENT / D007 COMPARATIVE (оставшиеся Tier-1)
 - D012 v2: улучшенная RU noun extraction, coreference heuristics
 - D018 v2: lazy alternatives markers, cross-ADR checks
 
 **Условие входа в Tier 2 (NLP):**
 - Tier-1 precision на реальных доках стабильна
-- Есть хотя бы 10 задокументированных реальных документов в корпусе
+- ✅ Есть хотя бы 10 задокументированных реальных документов в корпусе (17)
 - ✅ Allowlist реализован
 
 ---

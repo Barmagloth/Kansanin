@@ -5,6 +5,42 @@
 
 ---
 
+## [0.15.0] — 2026-03-16
+
+### Added — Phase 2: D003 + D006
+
+- **`detectors/d003_undefined_acronym.py`** v0.1.0: D003 UNDEFINED_ACRONYM — трёхфазный детектор: scan definitions → collect usage → report undefined. Исключает common acronyms (API, URL, HTTP, JSON и др.). Билингвальный EN+RU. Section gating: normative + decision_record для usage, все секции для definitions. Severity: MEDIUM. Confidence: HIGH (3+ uses) / MEDIUM (1–2). 6 fixtures.
+- **`detectors/d006_missing_priority.py`** v0.1.0: D006 MISSING_PRIORITY — контекстный детектор: срабатывает только при наличии приоритетной схемы (≥3 приоритизированных требования). EN bracket markers [MUST], MoSCoW, RU markers [ОБЯЗАТЕЛЬНО], inline priority. Severity: LOW. Confidence: HIGH (5+ prioritized) / MEDIUM (3–4). 5 fixtures.
+
+### Changed
+- `run_audit.py`: добавлены D003, D006 в pipeline (11 детекторов).
+- `calibration/calibrate.py`: добавлены D003, D006 в harness.
+
+### Verified
+- Corpus 17 docs: 169 total findings (26 new UNDEFINED_ACRONYM, 0 MISSING_PRIORITY).
+- Все fixtures проходят.
+
+---
+
+## [0.14.0] — 2026-03-16
+
+### Added — Phase 1: D007 + packaging + corpus expansion
+
+- **`detectors/d007_untestable_requirement.py`** v0.1.0: D007 UNTESTABLE_REQUIREMENT — 10 билингвальных паттернов в 2 tier-ах: HIGH для subjective adjectives / unmeasurable performance / absolute claims, MEDIUM для vague comparison / subjective satisfaction. Section gating: ТОЛЬКО normative. 6 fixtures.
+- **`pyproject.toml`**: pip-installable пакет, CLI entry point `kansanin`.
+- **`__init__.py`**: добавлен с `__version__ = "0.13.0"`.
+
+### Changed
+- Корпус расширен с 10 → 17 документов (7 real open-source docs). Corpus findings: 143 total.
+- `calibration/calibrate.py` v0.4.0: мигрирован на новый API (больше не использует backward-compat shims).
+- 3 backward-compat shims удалены: `document_model.py`, `markdown_ingest.py`, `section_roles.py`.
+
+### Verified
+- Все fixtures проходят.
+- Corpus 17 docs: 143 findings.
+
+---
+
 ## [0.13.0] — 2026-03-12
 
 ### Added — Sprint C: README + Positioning + GitLab CI
