@@ -66,9 +66,9 @@ policy gate  (exit code based on severity threshold)
 **Core** (Tier 1) is stdlib-only — zero external dependencies. Tier 2/3 are opt-in extras:
 
 ```bash
-pip install kansanin[nlp]      # Tier 2: spaCy + textstat
-pip install kansanin[llm]      # Tier 3: openai + anthropic SDKs
-pip install kansanin[llm-onnx] # Tier 3: local ONNX embeddings
+pip install -e ".[nlp]"        # Tier 2: spaCy + textstat
+pip install -e ".[llm]"        # Tier 3: openai + anthropic SDKs
+pip install -e ".[llm-onnx]"   # Tier 3: local ONNX embeddings
 ```
 
 Section roles (normative, explanatory, decision_record, suppressed) are classified from headings and control which detectors fire and at what severity.
@@ -163,10 +163,12 @@ cd Kansanin
 
 That's it. The core engine runs on stdlib only — no `pip install` required.
 
-### As a package
+### As a package (editable install)
 
 ```bash
-pip install git+https://github.com/Barmagloth/Kansanin.git
+git clone https://github.com/Barmagloth/Kansanin.git
+cd Kansanin
+pip install -e .
 ```
 
 After installation the `kansanin` command is available globally:
@@ -177,22 +179,28 @@ kansanin docs/*.md --fail-on high --json
 kansanin --serve
 ```
 
+Or install directly from GitHub without cloning:
+
+```bash
+pip install git+https://github.com/Barmagloth/Kansanin.git
+```
+
 ### Optional tiers
 
 Tier 2 (NLP) and Tier 3 (LLM) require additional packages:
 
 ```bash
 # Tier 2: readability metrics (spaCy + textstat)
-pip install kansanin[nlp]
+pip install -e ".[nlp]"
 
 # Tier 3: LLM-powered semantic analysis (OpenAI + Anthropic SDKs)
-pip install kansanin[llm]
+pip install -e ".[llm]"
 
 # Tier 3: local ONNX embeddings (offline, no API keys)
-pip install kansanin[llm-onnx]
+pip install -e ".[llm-onnx]"
 
 # Everything at once
-pip install kansanin[llm-all]
+pip install -e ".[llm-all]"
 ```
 
 ### LLM provider setup
