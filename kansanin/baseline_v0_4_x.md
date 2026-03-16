@@ -1,4 +1,4 @@
-# Baseline v0.4.x — doc_auditor
+# Baseline v0.4.x — kansanin
 
 > **SUPERSEDED by v0.5.0.** Архитектура разбита на ingest → normalize → detect.
 > Поведение детекторов не изменилось (verified: zero regression).

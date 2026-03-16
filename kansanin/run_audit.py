@@ -270,7 +270,13 @@ def print_report(
     policy_violated: bool = False,
 ) -> None:
     print(f"\n{'─'*62}")
-    from doc_auditor import __version__
+    try:
+        from kansanin import __version__
+    except ImportError:
+        import re as _re
+        _init = Path(__file__).resolve().parent / "__init__.py"
+        _m = _re.search(r'__version__\s*=\s*"([^"]+)"', _init.read_text())
+        __version__ = _m.group(1) if _m else "?"
     print(f"  Kansanin v{__version__} · {doc_path.name}")
     print(f"{'─'*62}")
 

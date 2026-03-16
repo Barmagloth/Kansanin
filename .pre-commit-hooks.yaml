@@ -1,7 +1,7 @@
 - id: kansanin
   name: Kansanin doc policy
   description: Fails when engineering documents violate policy (vagueness, placeholders, passive voice, etc.)
-  entry: python doc_auditor/run_audit.py
+  entry: python kansanin/run_audit.py
   language: python
   types: [markdown]
   pass_filenames: true

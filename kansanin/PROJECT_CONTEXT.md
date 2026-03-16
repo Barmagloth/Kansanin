@@ -1,5 +1,5 @@
 # PROJECT_CONTEXT.md
-# doc_auditor — контекст проекта для Cowork-сессий
+# kansanin — контекст проекта для Cowork-сессий
 # Последнее обновление: 2026-03-16
 # Версия пакета: v0.16.0
 
@@ -7,7 +7,7 @@
 
 ## Что это
 
-`doc_auditor` — инструмент автоматического аудита инженерных документов (ТЗ/SRS, архитектурные документы, ADR).
+`kansanin` — инструмент автоматического аудита инженерных документов (ТЗ/SRS, архитектурные документы, ADR).
 Входные форматы: Markdown (реализован); TXT, DOCX, PDF — подготовлен контракт ingestor-а.
 Выход: findings с evidence_span, severity, confidence, remediation_hint.
 
@@ -19,7 +19,7 @@
 
 ```
 pyproject.toml              # pip-installable, CLI entry point `kansanin` (в корне репо)
-doc_auditor/
+kansanin/
 ├── models/
 │   ├── raw.py                 # RawBlock, RawDocument, StructureConfidence (v0.5.0)
 │   └── canonical.py           # Document, Section, Sentence, Finding (v0.6.0)
@@ -224,7 +224,7 @@ graph_spec_v5_3.md: 44 FP → 0 (D002/D004/D005 после C-4 checklist fix), 1
 
 **Allowlist (v0.6.0, реализован):**
 Трёхуровневый allowlist: document > project > global.
-Формат: YAML-файлы (`*.allowlist.yaml`, `.doc_auditor/allowlist.project.yaml`, `allowlist.global.yaml`).
+Формат: YAML-файлы (`*.allowlist.yaml`, `.kansanin/allowlist.project.yaml`, `allowlist.global.yaml`).
 Entry: term, defect_id, reason, applies_to_section_roles (опц.), match_mode (exact), expires (опц.).
 CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 Текущие entries: `быстрый` (graph_spec, per-document), `периодически` (concept_v1_6, per-document).

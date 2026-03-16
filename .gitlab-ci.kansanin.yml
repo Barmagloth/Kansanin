@@ -63,7 +63,7 @@ kansanin:
         exit 0
       fi
       echo "Auditing: $FILES"
-      python /tmp/kansanin/doc_auditor/run_audit.py $FILES \
+      python /tmp/kansanin/kansanin/run_audit.py $FILES \
         --fail-on "$KANSANIN_FAIL_ON" \
         --json \
         --out kansanin-report.json

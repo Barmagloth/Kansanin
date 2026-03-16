@@ -84,7 +84,7 @@ jobs:
             echo "::group::Auditing $f"
             BASENAME=$(echo "$f" | sed 's/[\/]/_/g')
 
-            python doc_auditor/run_audit.py "$f" \
+            python kansanin/run_audit.py "$f" \
               --fail-on "$FAIL_ON" \
               --json \
               --out "_kansanin_reports/${BASENAME}.json" \

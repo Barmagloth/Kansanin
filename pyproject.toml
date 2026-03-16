@@ -45,10 +45,10 @@ llm-all = [
 Repository = "https://github.com/Barmagloth/Kansanin"
 
 [project.scripts]
-kansanin = "doc_auditor.run_audit:main"
+kansanin = "kansanin.run_audit:main"
 
 [tool.setuptools.packages.find]
-include = ["doc_auditor*"]
+include = ["kansanin*"]
 
 [tool.setuptools.package-data]
-doc_auditor = ["*.txt", "*.yaml", "llm/prompts/*.txt", "web/static/*.html"]
+kansanin = ["*.txt", "*.yaml", "llm/prompts/*.txt", "web/static/*.html"]

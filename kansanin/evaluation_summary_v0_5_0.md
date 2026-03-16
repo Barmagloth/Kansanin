@@ -1,4 +1,4 @@
-# Evaluation Summary v0.5.0 — doc_auditor
+# Evaluation Summary v0.5.0 — kansanin
 
 Дата: 2026-03-12
 Версия pipeline: v0.5.0 (ingest → normalize → detect)

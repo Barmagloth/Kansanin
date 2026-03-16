@@ -19,7 +19,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
-# Ensure doc_auditor is importable
+# Ensure kansanin is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from run_audit import (

@@ -1,7 +1,7 @@
 # models/__init__.py
 # version: 0.5.0
 """
-Модели данных doc_auditor.
+Модели данных kansanin.
 
 raw      — формат-зависимый слой (RawBlock, RawDocument)
 canonical — формат-независимый слой (Document, Section, Sentence, Finding)

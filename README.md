@@ -103,13 +103,13 @@ The threshold is configurable:
 
 ```bash
 # Default: fail on HIGH + CRITICAL
-python doc_auditor/run_audit.py spec.md
+python kansanin/run_audit.py spec.md
 
 # Strict: fail on MEDIUM and above
-python doc_auditor/run_audit.py spec.md --fail-on medium
+python kansanin/run_audit.py spec.md --fail-on medium
 
 # Lenient: fail only on CRITICAL
-python doc_auditor/run_audit.py spec.md --fail-on critical
+python kansanin/run_audit.py spec.md --fail-on critical
 ```
 
 ### CLI output (policy failed)
@@ -237,50 +237,50 @@ llm:
 
 ```bash
 # Audit a single document
-python doc_auditor/run_audit.py path/to/spec.md
+python kansanin/run_audit.py path/to/spec.md
 
 # Audit multiple documents
-python doc_auditor/run_audit.py docs/*.md
+python kansanin/run_audit.py docs/*.md
 
 # Custom severity threshold (default: high)
-python doc_auditor/run_audit.py spec.md --fail-on medium
-python doc_auditor/run_audit.py spec.md --fail-on critical
+python kansanin/run_audit.py spec.md --fail-on medium
+python kansanin/run_audit.py spec.md --fail-on critical
 ```
 
 ### Output formats
 
 ```bash
 # Human-readable report (default)
-python doc_auditor/run_audit.py spec.md
+python kansanin/run_audit.py spec.md
 
 # JSON to stdout
-python doc_auditor/run_audit.py spec.md --json
+python kansanin/run_audit.py spec.md --json
 
 # Save JSON report to file
-python doc_auditor/run_audit.py spec.md --out report.json
+python kansanin/run_audit.py spec.md --out report.json
 
 # Show suppressed findings alongside active ones
-python doc_auditor/run_audit.py spec.md --show-suppressed
+python kansanin/run_audit.py spec.md --show-suppressed
 
 # Disable allowlist filtering entirely
-python doc_auditor/run_audit.py spec.md --no-allowlist
+python kansanin/run_audit.py spec.md --no-allowlist
 ```
 
 ### Tier 2/3 analysis
 
 ```bash
 # Enable NLP tier (readability metrics)
-python doc_auditor/run_audit.py spec.md --nlp
+python kansanin/run_audit.py spec.md --nlp
 
 # Enable LLM tier (semantic analysis)
-python doc_auditor/run_audit.py spec.md --llm
+python kansanin/run_audit.py spec.md --llm
 
 # Specify LLM provider and model
-python doc_auditor/run_audit.py spec.md --llm --llm-provider openai --llm-model gpt-4o
-python doc_auditor/run_audit.py spec.md --llm --llm-provider anthropic
+python kansanin/run_audit.py spec.md --llm --llm-provider openai --llm-model gpt-4o
+python kansanin/run_audit.py spec.md --llm --llm-provider anthropic
 
 # All tiers at once
-python doc_auditor/run_audit.py spec.md --nlp --llm --llm-provider anthropic
+python kansanin/run_audit.py spec.md --nlp --llm --llm-provider anthropic
 ```
 
 Without `--llm`, Tier 3 detectors still run in **heuristic fallback** mode (lower coverage, but no API keys needed).
@@ -289,13 +289,13 @@ Without `--llm`, Tier 3 detectors still run in **heuristic fallback** mode (lowe
 
 ```bash
 # Launch on default port (8088), opens browser
-python doc_auditor/run_audit.py --serve
+python kansanin/run_audit.py --serve
 
 # Custom port
-python doc_auditor/run_audit.py --serve --port 9000
+python kansanin/run_audit.py --serve --port 9000
 
 # Specify root directory for file tree
-python doc_auditor/run_audit.py path/to/docs/ --serve
+python kansanin/run_audit.py path/to/docs/ --serve
 ```
 
 The dashboard provides:
@@ -374,7 +374,7 @@ jobs:
       - name: Run Kansanin
         run: |
           git clone https://github.com/Barmagloth/Kansanin.git /tmp/kansanin
-          python /tmp/kansanin/doc_auditor/run_audit.py docs/*.md --fail-on high
+          python /tmp/kansanin/kansanin/run_audit.py docs/*.md --fail-on high
 ```
 
 ---
@@ -403,7 +403,7 @@ kansanin:
         FILES=$(find docs/ -name '*.md' -type f 2>/dev/null)
       fi
       [ -z "$FILES" ] && echo "No markdown files to audit." && exit 0
-      python /tmp/kansanin/doc_auditor/run_audit.py $FILES \
+      python /tmp/kansanin/kansanin/run_audit.py $FILES \
         --fail-on "$FAIL_ON" --json --out kansanin-report.json
   artifacts:
     when: always
@@ -420,7 +420,7 @@ Not every finding is a real defect. Kansanin supports a 3-level allowlist for tr
 | Level | File | Use case |
 |-------|------|----------|
 | Document | `spec.md.allowlist.yaml` | Term acceptable in one document |
-| Project | `.doc_auditor/allowlist.project.yaml` | Term acceptable project-wide |
+| Project | `.kansanin/allowlist.project.yaml` | Term acceptable project-wide |
 | Global | `allowlist.global.yaml` | Universal exception (rare) |
 
 Example entry:

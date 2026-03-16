@@ -5,8 +5,8 @@
 
 Приоритет (от узкого к широкому):
   1. per-document  — *.allowlist.yaml рядом с документом
-  2. per-project   — .doc_auditor/allowlist.project.yaml
-  3. global        — allowlist.global.yaml (в корне doc_auditor/)
+  2. per-project   — .kansanin/allowlist.project.yaml
+  3. global        — allowlist.global.yaml (в корне kansanin/)
 
 AL-1: загрузка 3 уровней, exact match, defect_id scoping, trace
 AL-2: schema validation, strict section_roles, reason/owner/expires
@@ -23,7 +23,7 @@ import yaml
 from models.canonical import Finding
 from allowlist.schema import validate_allowlist_data
 
-logger = logging.getLogger("doc_auditor.allowlist")
+logger = logging.getLogger("kansanin.allowlist")
 
 
 # ── Data model ────────────────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ class Allowlist:
 
         Пути:
           document: <doc_path>.allowlist.yaml  (например graph_spec_v5_3.md.allowlist.yaml)
-          project:  <project_root>/.doc_auditor/allowlist.project.yaml
+          project:  <project_root>/.kansanin/allowlist.project.yaml
           global:   <project_root>/allowlist.global.yaml
 
         Если project_root не задан — пробуем найти по маркерам.
@@ -168,7 +168,7 @@ class Allowlist:
         # project level
         proj_entries: list[AllowlistEntry] = []
         if project_root:
-            proj_path = project_root / ".doc_auditor" / "allowlist.project.yaml"
+            proj_path = project_root / ".kansanin" / "allowlist.project.yaml"
             proj_data = _load_yaml(proj_path)
             proj_entries = _parse_entries(proj_data, "project", str(proj_path))
 
@@ -250,10 +250,10 @@ class Allowlist:
 
 
 def _find_project_root(start: Path) -> Path | None:
-    """Поиск корня проекта вверх по дереву (маркеры: .doc_auditor/, .git/, run_audit.py)."""
+    """Поиск корня проекта вверх по дереву (маркеры: .kansanin/, .git/, run_audit.py)."""
     current = start.resolve().parent
     for _ in range(10):  # максимум 10 уровней вверх
-        if (current / ".doc_auditor").is_dir():
+        if (current / ".kansanin").is_dir():
             return current
         if (current / "run_audit.py").exists():
             return current

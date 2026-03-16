@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.16.0
+# Detector Matrix — kansanin v0.16.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -286,7 +286,7 @@ Allowlist применяется **после** всех детекторов, �
 | Уровень | Файл | Когда использовать |
 |---|---|---|
 | document | `<doc>.allowlist.yaml` | Термин допустим только в одном документе |
-| project | `.doc_auditor/allowlist.project.yaml` | Термин допустим в рамках проекта |
+| project | `.kansanin/allowlist.project.yaml` | Термин допустим в рамках проекта |
 | global | `allowlist.global.yaml` | Универсальное исключение (крайне редко) |
 
 **Matching:**

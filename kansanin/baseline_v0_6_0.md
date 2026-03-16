@@ -1,4 +1,4 @@
-# Baseline v0.6.0 — doc_auditor
+# Baseline v0.6.0 — kansanin
 
 Дата фиксации: 2026-03-12
 Предыдущий baseline: `baseline_v0_5_x.md` (v0.5.0, архитектурный рефакторинг)
@@ -12,7 +12,7 @@
 Трёхуровневый механизм подавления findings с жёстким приоритетом:
 
 1. **per-document** — `<doc>.allowlist.yaml` рядом с документом
-2. **per-project** — `.doc_auditor/allowlist.project.yaml`
+2. **per-project** — `.kansanin/allowlist.project.yaml`
 3. **global** — `allowlist.global.yaml` в корне проекта
 
 Приоритет: document > project > global. Если термин разрешён в документе, проверка project и global не выполняется.

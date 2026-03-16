@@ -1,4 +1,4 @@
-# Changelog — doc_auditor
+# Changelog — kansanin
 
 Формат: [Keep a Changelog](https://keepachangelog.com/).
 Версионирование: SemVer.
