@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # run_audit.py
-# version: 0.12.0
+# version: 0.16.0
 """
 CLI-точка входа / policy gate.
 Usage: python run_audit.py <file...> [--json] [--out findings.json]
@@ -12,6 +12,7 @@ Exit codes:
   1 — findings above threshold (policy violated)
   2 — internal / runtime / config error
 
+v0.16.0: LLM/NLP tier integration (--llm, --nlp, --llm-provider, --llm-model).
 v0.12.0: multi-file CLI, pre-commit hook support.
 v0.11.0: exit code policy, --fail-on, severity summary, CI-ready JSON.
 v0.10.0: D008 PASSIVE_WITHOUT_AGENT detector.
@@ -128,13 +129,81 @@ def _dedup_cross_detector(findings: list[Finding]) -> list[Finding]:
     return [f for i, f in enumerate(findings) if i not in to_remove]
 
 
-def run(path: Path, use_allowlist: bool = True) -> list[Finding]:
+# ── Tier 2/3 lazy detector loading ───────────────────────────────────────────
+
+def _get_nlp_detectors() -> list:
+    """Lazily import Tier 2 (NLP) detectors. Empty list if deps unavailable."""
+    dets = []
+    try:
+        from detectors.d010_readability import detect as d010
+        dets.append(d010)
+    except ImportError:
+        pass
+    return dets
+
+
+def _get_llm_detectors() -> list:
+    """Lazily import Tier 3 (LLM) detectors. Empty list if deps unavailable."""
+    dets = []
+    for mod_name, func_alias in [
+        ("detectors.d013_contradiction", "d013"),
+        ("detectors.d015_implementation_bias", "d015"),
+        ("detectors.d016_terminology", "d016"),
+        ("detectors.d017_redundancy", "d017"),
+    ]:
+        try:
+            import importlib
+            mod = importlib.import_module(mod_name)
+            dets.append(mod.detect)
+        except ImportError:
+            pass
+    return dets
+
+
+def _get_llm_provider(config: dict | None = None):
+    """Instantiate LLM provider from config. Returns None on failure."""
+    try:
+        from llm.config import load_config
+        from llm.registry import get_provider
+        cfg = load_config(cli_overrides=config)
+        return get_provider(cfg.llm.provider, model=cfg.llm.model,
+                            timeout=cfg.llm.timeout_seconds)
+    except Exception as exc:
+        import warnings
+        warnings.warn(f"LLM provider unavailable: {exc}")
+        return None
+
+
+def run(path: Path, use_allowlist: bool = True,
+        use_nlp: bool = False, use_llm: bool = False,
+        llm_config: dict | None = None) -> list[Finding]:
     """Run full pipeline. Returns active findings (after allowlist filtering)."""
     raw = ingest_file(path)
     doc = build_document(raw)
     findings: list[Finding] = []
     for det in _ALL_DETECTORS:
         findings.extend(det(doc))
+
+    # Tier 2: NLP (optional, local)
+    if use_nlp:
+        for det in _get_nlp_detectors():
+            try:
+                findings.extend(det(doc))
+            except Exception as exc:
+                import warnings
+                warnings.warn(f"NLP detector {det.__module__} failed: {exc}")
+
+    # Tier 3: LLM (optional, API or local)
+    if use_llm:
+        provider = _get_llm_provider(llm_config)
+        if provider:
+            for det in _get_llm_detectors():
+                try:
+                    findings.extend(det(doc, provider=provider))
+                except Exception as exc:
+                    import warnings
+                    warnings.warn(f"LLM detector {det.__module__} failed: {exc}")
+
     findings = _dedup_cross_detector(findings)
     findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
 
@@ -148,6 +217,9 @@ def run(path: Path, use_allowlist: bool = True) -> list[Finding]:
 def run_with_traces(
     path: Path,
     use_allowlist: bool = True,
+    use_nlp: bool = False,
+    use_llm: bool = False,
+    llm_config: dict | None = None,
 ) -> tuple[list[Finding], list[SuppressionTrace], Allowlist | None]:
     """Run pipeline, return (active_findings, suppression_traces, allowlist)."""
     raw = ingest_file(path)
@@ -155,6 +227,27 @@ def run_with_traces(
     findings: list[Finding] = []
     for det in _ALL_DETECTORS:
         findings.extend(det(doc))
+
+    # Tier 2: NLP (optional)
+    if use_nlp:
+        for det in _get_nlp_detectors():
+            try:
+                findings.extend(det(doc))
+            except Exception as exc:
+                import warnings
+                warnings.warn(f"NLP detector {det.__module__} failed: {exc}")
+
+    # Tier 3: LLM (optional)
+    if use_llm:
+        provider = _get_llm_provider(llm_config)
+        if provider:
+            for det in _get_llm_detectors():
+                try:
+                    findings.extend(det(doc, provider=provider))
+                except Exception as exc:
+                    import warnings
+                    warnings.warn(f"LLM detector {det.__module__} failed: {exc}")
+
     findings = _dedup_cross_detector(findings)
     findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
 
@@ -316,9 +409,15 @@ def _audit_one(
     use_allowlist: bool,
     show_suppressed: bool,
     as_json: bool,
+    use_nlp: bool = False,
+    use_llm: bool = False,
+    llm_config: dict | None = None,
 ) -> tuple[bool, list[Finding], list[SuppressionTrace], Allowlist | None]:
     """Audit a single file. Returns (policy_violated, findings, traces, al)."""
-    findings, traces, al = run_with_traces(path, use_allowlist=use_allowlist)
+    findings, traces, al = run_with_traces(
+        path, use_allowlist=use_allowlist,
+        use_nlp=use_nlp, use_llm=use_llm, llm_config=llm_config,
+    )
     blocking = _severity_at_or_above(fail_on)
     violated = any(f.severity.value in blocking for f in findings)
     return violated, findings, traces, al
@@ -343,6 +442,17 @@ def main() -> None:
                         metavar="SEVERITY",
                         help=f"Exit 1 if any finding at or above this severity "
                              f"(critical|high|medium|low|info, default: {_DEFAULT_FAIL_ON})")
+    # Tier 2/3 optional layers
+    parser.add_argument("--nlp", action="store_true",
+                        help="Enable NLP tier (Tier 2). Requires: pip install kansanin[nlp]")
+    parser.add_argument("--llm", action="store_true",
+                        help="Enable LLM tier (Tier 3). Requires: pip install kansanin[llm]")
+    parser.add_argument("--llm-provider", type=str, default=None,
+                        metavar="NAME",
+                        help="LLM provider (openai|anthropic|deepseek|onnx)")
+    parser.add_argument("--llm-model", type=str, default=None,
+                        metavar="MODEL",
+                        help="LLM model name (e.g. gpt-4o, claude-sonnet-4-20250514)")
     args = parser.parse_args()
 
     # validate --fail-on
@@ -358,6 +468,13 @@ def main() -> None:
             sys.exit(EXIT_ERROR)
 
     use_al = not args.no_allowlist
+    use_nlp = args.nlp
+    use_llm = args.llm
+    llm_config = {}
+    if args.llm_provider:
+        llm_config["llm_provider"] = args.llm_provider
+    if args.llm_model:
+        llm_config["llm_model"] = args.llm_model
     any_violated = False
     all_findings: list[Finding] = []
     all_traces: list[SuppressionTrace] = []
@@ -367,6 +484,8 @@ def main() -> None:
         try:
             violated, findings, traces, al = _audit_one(
                 fpath, fail_on, use_al, args.show_suppressed, args.json,
+                use_nlp=use_nlp, use_llm=use_llm,
+                llm_config=llm_config or None,
             )
         except Exception as exc:
             print(f"error: {fpath}: {exc}", file=sys.stderr)

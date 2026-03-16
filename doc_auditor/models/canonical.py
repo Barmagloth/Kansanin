@@ -1,5 +1,5 @@
 # models/canonical.py
-# version: 0.5.0
+# version: 0.6.0
 """
 Canonical layer — формат-независимая модель документа.
 
@@ -81,3 +81,7 @@ class Finding:
     matched_term: str | None = None
     term_category: str | None = None
     section_role: str | None = None
+    # v0.6.0 — LLM tier metadata (None для Tier 1 детекторов)
+    llm_provider: str | None = None        # "openai", "anthropic", "onnx", etc.
+    llm_model: str | None = None           # "gpt-4o", "claude-sonnet-4-20250514", etc.
+    llm_confidence_raw: float | None = None  # raw model confidence 0.0–1.0

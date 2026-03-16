@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kansanin"
-version = "0.13.0"
+version = "0.16.0"
 description = "Static analysis for engineering specifications and ADRs"
 readme = "README.md"
 license = "MIT"
@@ -23,6 +23,25 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
 ]
 
+[project.optional-dependencies]
+nlp = [
+    "spacy>=3.7",
+    "textstat>=0.7",
+]
+llm = [
+    "openai>=1.0",
+    "anthropic>=0.30",
+]
+llm-onnx = [
+    "onnxruntime>=1.17",
+    "tokenizers>=0.15",
+]
+llm-all = [
+    "kansanin[nlp]",
+    "kansanin[llm]",
+    "kansanin[llm-onnx]",
+]
+
 [project.urls]
 Repository = "https://github.com/Barmagloth/Kansanin"
 
@@ -33,4 +52,4 @@ kansanin = "doc_auditor.run_audit:main"
 include = ["doc_auditor*"]
 
 [tool.setuptools.package-data]
-doc_auditor = ["*.txt", "*.yaml"]
+doc_auditor = ["*.txt", "*.yaml", "llm/prompts/*.txt"]

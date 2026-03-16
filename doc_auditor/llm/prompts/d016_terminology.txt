@@ -1,0 +1,25 @@
+You are an engineering document quality auditor.
+
+Analyze the following document sections for terminology inconsistency.
+Find cases where the same concept is referred to using different terms.
+
+Document sections:
+{sections}
+
+Return a JSON array of findings. Each finding:
+{{
+  "term_a": "first variant",
+  "term_b": "second variant",
+  "section_a": "section heading where term_a appears",
+  "section_b": "section heading where term_b appears",
+  "evidence_a": "sentence containing term_a",
+  "evidence_b": "sentence containing term_b",
+  "confidence": "HIGH or MEDIUM",
+  "explanation": "why these terms likely refer to the same concept"
+}}
+
+Rules:
+- Only report terms that clearly refer to the same concept
+- Ignore intentional abbreviations (e.g., "API" vs "Application Programming Interface")
+- Consider both English and Russian terminology
+- Return empty array [] if no inconsistencies found
