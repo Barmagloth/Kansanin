@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kansanin"
-version = "0.17.0"
+version = "0.18.0"
 description = "Static analysis for engineering specifications and ADRs"
 readme = "README.md"
 license = "MIT"
@@ -52,4 +52,4 @@ kansanin = "doc_auditor.run_audit:main"
 include = ["doc_auditor*"]
 
 [tool.setuptools.package-data]
-doc_auditor = ["*.txt", "*.yaml", "llm/prompts/*.txt"]
+doc_auditor = ["*.txt", "*.yaml", "llm/prompts/*.txt", "web/static/*.html"]

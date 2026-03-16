@@ -12,6 +12,7 @@ Exit codes:
   1 — findings above threshold (policy violated)
   2 — internal / runtime / config error
 
+v0.18.0: Web dashboard (--serve, --port).
 v0.16.0: LLM/NLP tier integration (--llm, --nlp, --llm-provider, --llm-model).
 v0.12.0: multi-file CLI, pre-commit hook support.
 v0.11.0: exit code policy, --fail-on, severity summary, CI-ready JSON.
@@ -428,7 +429,7 @@ def main() -> None:
         description="Kansanin — policy engine for engineering documents",
         epilog="Exit codes: 0 = passed, 1 = policy violated, 2 = error",
     )
-    parser.add_argument("files", nargs="+", type=Path, metavar="FILE",
+    parser.add_argument("files", nargs="*", type=Path, metavar="FILE",
                         help="Document(s) to audit (.md)")
     parser.add_argument("--json", action="store_true",
                         help="Output JSON instead of human-readable report")
@@ -453,7 +454,24 @@ def main() -> None:
     parser.add_argument("--llm-model", type=str, default=None,
                         metavar="MODEL",
                         help="LLM model name (e.g. gpt-4o, claude-sonnet-4-20250514)")
+    # Web dashboard
+    parser.add_argument("--serve", action="store_true",
+                        help="Launch web dashboard instead of CLI audit")
+    parser.add_argument("--port", type=int, default=8088,
+                        help="Web dashboard port (default: 8088)")
     args = parser.parse_args()
+
+    # ── Web dashboard mode ──────────────────────────────────────────────
+    if args.serve:
+        from web.server import serve
+        root = args.files[0] if args.files else Path(".")
+        root = root if root.is_dir() else root.parent
+        serve(root, port=args.port, open_browser=True)
+        sys.exit(EXIT_OK)
+
+    # validate files present in CLI mode
+    if not args.files:
+        parser.error("the following arguments are required: FILE (or use --serve)")
 
     # validate --fail-on
     fail_on = args.fail_on.lower()
