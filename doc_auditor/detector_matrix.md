@@ -1,4 +1,4 @@
-# Detector Matrix — doc_auditor v0.15.0
+# Detector Matrix — doc_auditor v0.16.0
 
 Источник истины для поведения всех реализованных детекторов.
 Каждая строка — один детектор. Колонки описывают полное поведение.
@@ -203,6 +203,44 @@
 
 ---
 
+## D010 · READABILITY_METRIC
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d010_readability.py` v0.1.0 |
+| **Tier** | 2 (NLP) — requires `--nlp` flag |
+| **Класс дефекта** | READABILITY_METRIC |
+| **Trigger basis** | Two sub-detectors: D010.1 LONG_SENTENCE (word count per sentence), D010.2 COMPLEX_SECTION (average sentence length per section). Thresholds: normative >50/30 words, decision_record >60/35 words. Word count via `len(text.split())`. |
+| **Severity rules** | D010.1 LONG_SENTENCE → MEDIUM. D010.2 COMPLEX_SECTION → LOW. |
+| **Confidence rules** | Всегда MEDIUM. |
+| **Suppression** | `is_suppressed_heading()` из `normalize/suppression.py`. Section role gating: только normative + decision_record. |
+| **Section-role dependence** | Частичная: normative + decision_record (с разными порогами). Explanatory, suppressed, unknown — skip. |
+| **Fixtures** | `fixtures/d010/` — 5 fixture-файлов. |
+| **Known edge cases** | Word count не учитывает сложность слов. Пороги откалиброваны на корпусе. |
+| **Corpus results** | 7 findings (2 LONG_SENTENCE + 5 COMPLEX_SECTION). |
+
+---
+
+## D016 · TERMINOLOGY_INCONSISTENCY
+
+| Параметр | Значение |
+|---|---|
+| **Файл** | `detectors/d016_terminology.py` v0.1.0 |
+| **Tier** | 3 (LLM) с heuristic fallback — requires `--llm` flag (or heuristic works without deps) |
+| **Класс дефекта** | TERMINOLOGY_INCONSISTENCY |
+| **Trigger basis** | Два режима: 1) Heuristic — 13 synonym groups (6 EN, 5 RU + 2 shared), frequency-based detection. Находит менее частый термин из синонимической пары. 2) LLM — отправляет секции через prompt template, парсит JSON-ответ с парами терминов. Fallback: LLM → heuristic при ошибке. |
+| **Severity rules** | Heuristic mode → LOW. LLM mode → MEDIUM. |
+| **Confidence rules** | Heuristic mode → MEDIUM. LLM mode → HIGH/MEDIUM (по ответу LLM). |
+| **Suppression** | `is_suppressed_heading()` из `normalize/suppression.py`. Все остальные секции проверяются (терминология важна везде). |
+| **Section-role dependence** | Минимальная: только suppressed секции исключаются. |
+| **Fixtures** | `fixtures/d016/` — 4 fixture-файла. |
+| **Synonym groups (heuristic)** | EN: user/client/end-user, system/application/platform/solution, requirement/specification/spec, error/failure/fault/defect/bug, database/DB/data store, log/audit trail/journal. RU: пользователь/клиент/потребитель, система/приложение/платформа/решение, требование/спецификация, ошибка/сбой/дефект/неисправность, база данных/БД/хранилище. Pruned: interface/API (FP), authenticate/authorize (semantically distinct). |
+| **LLM integration** | Prompt template: `llm/prompts/d016_terminology.txt`. Provider via `detect(doc, provider=...)`. JSON response schema: `[{term_a, term_b, evidence_a, section_a, confidence, explanation}]`. |
+| **Known edge cases** | "system/application/platform" group can be noisy — separate concepts in some specs. LLM mode resolves this. |
+| **Corpus results** | 11 findings (heuristic mode). |
+
+---
+
 ## Сводная таблица
 
 | ID | Класс | Severity | Confidence | Section-role gating | Suppression layers |
@@ -218,6 +256,8 @@
 | D009 | COMPOSITE_REQUIREMENT | HIGH (всегда, только normative) | HIGH / MEDIUM (по паттерну) | Строгая (только normative) | block-level + inline + heading + role skip |
 | D012 | AMBIGUOUS_REFERENCE | HIGH (normative) / MEDIUM (rest) | MEDIUM (modal/multi-pronoun) / LOW (skip) | Полная (4 роли, explanatory skip) | block-level + inline + heading + role skip + pronoun filters |
 | D018 | ADR_ANTIPATTERN | HIGH (missing sections) / MEDIUM (thin, outcome_only) | HIGH / MEDIUM (по подтипу) | Нет (ADR-level, не section-role) | ADR detection gate + block-level + inline |
+| D010 | READABILITY_METRIC | MEDIUM (long sentence) / LOW (complex section) | MEDIUM (всегда) | Частичная (normative + decision_record) | block-level + inline + heading + role skip |
+| D016 | TERMINOLOGY_INCONSISTENCY | LOW (heuristic) / MEDIUM (LLM) | MEDIUM (heuristic) / HIGH-MEDIUM (LLM) | Минимальная (только suppressed skip) | block-level + inline + heading |
 
 ---
 
@@ -233,7 +273,7 @@
 Ключевые слова: пример, example, appendix, приложение, глоссарий, glossary, changelog, history.
 Поиск в любой позиции заголовка (покрывает «21. Глоссарий»).
 
-**Примечание:** D002, D004, D005 содержат собственные `_SUPPRESSED` regex — legacy-дубликаты, фактически не используемые. Кандидат на удаление при следующем cleanup.
+**Примечание:** Legacy `_SUPPRESSED` regex в D002 и D004 удалены в v0.16.0. D005 `_SUPPRESSED_SECTION_HEADINGS` — legacy-дубликат, кандидат на удаление.
 
 ---
 
