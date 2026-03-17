@@ -1,4 +1,5 @@
 __pycache__/
-doc_auditor/calibration/corpus/calibration_raw_*.json
-doc_auditor/calibration/corpus/calibration_labeled_*.json
+*.egg-info/
+kansanin/calibration/corpus/calibration_raw_*.json
+kansanin/calibration/corpus/calibration_labeled_*.json
 .cowork_context.md
