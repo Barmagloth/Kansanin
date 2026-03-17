@@ -14,6 +14,14 @@ from models.canonical import Sentence
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+")
 
 
+def offset_to_linecol(text: str, offset: int) -> tuple[int, int]:
+    """Convert absolute character offset to 1-based (line, col)."""
+    line = text.count('\n', 0, offset) + 1
+    last_nl = text.rfind('\n', 0, offset)
+    col = offset - last_nl          # 1-based (if no \n, last_nl == -1 → col = offset+1)
+    return (line, col)
+
+
 def split_sentences(text: str, base_offset: int,
                     section_id: str) -> list[Sentence]:
     """Разбивает текст секции на предложения.

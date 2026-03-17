@@ -146,8 +146,32 @@ class KansaninHandler(BaseHTTPRequestHandler):
         elif path == "/api/detectors":
             self._send_json(_DETECTOR_META)
 
+        elif path == "/api/source":
+            self._handle_source(parse_qs(parsed.query))
+
         else:
             self.send_error(404, "Not found")
+
+    def _handle_source(self, params: dict) -> None:
+        """GET /api/source?path=<file> — return raw document text."""
+        paths = params.get("path", [])
+        if not paths:
+            self._send_error_json(400, "Missing 'path' parameter")
+            return
+        fpath = Path(paths[0]).resolve()
+        root = self.root_dir.resolve()
+        if not fpath.is_relative_to(root):
+            self._send_error_json(403, "Path outside root directory")
+            return
+        if not fpath.is_file():
+            self._send_error_json(404, "File not found")
+            return
+        try:
+            text = fpath.read_text(encoding="utf-8")
+        except Exception as exc:
+            self._send_error_json(500, f"Cannot read file: {exc}")
+            return
+        self._send_json({"path": str(fpath), "text": text})
 
     # ── POST routes ──────────────────────────────────────────────────────
 
@@ -203,7 +227,7 @@ class KansaninHandler(BaseHTTPRequestHandler):
                 continue
 
             try:
-                findings, traces, _al = run_with_traces(
+                findings, traces, _al, doc = run_with_traces(
                     fpath,
                     use_allowlist=True,
                     use_nlp=use_nlp,
@@ -215,7 +239,7 @@ class KansaninHandler(BaseHTTPRequestHandler):
                 )
                 per_file.append({
                     "path": str(fpath),
-                    "findings": findings_to_json(findings),
+                    "findings": findings_to_json(findings, doc=doc),
                     "suppressed_count": len(traces),
                     "summary": build_summary(findings, traces, fail_on, violated),
                 })

@@ -221,8 +221,8 @@ def run_with_traces(
     use_nlp: bool = False,
     use_llm: bool = False,
     llm_config: dict | None = None,
-) -> tuple[list[Finding], list[SuppressionTrace], Allowlist | None]:
-    """Run pipeline, return (active_findings, suppression_traces, allowlist)."""
+) -> tuple[list[Finding], list[SuppressionTrace], "Allowlist | None", "Document"]:
+    """Run pipeline, return (active_findings, suppression_traces, allowlist, doc)."""
     raw = ingest_file(path)
     doc = build_document(raw)
     findings: list[Finding] = []
@@ -253,11 +253,11 @@ def run_with_traces(
     findings.sort(key=lambda f: (_SEV_ORDER.get(f.severity.value, 9), f.section_id))
 
     if not use_allowlist:
-        return findings, [], None
+        return findings, [], None, doc
 
     al = Allowlist.load_for_document(path.resolve())
     active, traces = al.filter_findings(findings)
-    return active, traces, al
+    return active, traces, al, doc
 
 
 def print_report(
@@ -356,13 +356,31 @@ def print_report(
     print(f"{'─'*62}\n")
 
 
-def findings_to_json(findings: list[Finding]) -> list[dict]:
+def findings_to_json(findings: list[Finding], doc=None) -> list[dict]:
+    from normalize.sentence_splitter import offset_to_linecol
+    sent_map = {}
+    if doc is not None:
+        sent_map = {s.id: s for s in doc.all_sentences}
     result = []
     for f in findings:
         d = asdict(f)
         d["evidence_span"] = list(d["evidence_span"])
         d["severity"]   = f.severity.value
         d["confidence"] = f.confidence.value
+        # line/col from absolute offset
+        sent = sent_map.get(f.sentence_id)
+        if sent is not None and doc is not None:
+            span_start = f.evidence_span[0]
+            # Some detectors store absolute offsets, others relative to sentence
+            if span_start < len(sent.text):
+                abs_start = sent.start_offset + span_start
+            else:
+                abs_start = span_start  # already absolute
+            abs_start = min(abs_start, len(doc.raw))
+            line, col = offset_to_linecol(doc.raw, abs_start)
+            d["line"] = line
+            d["col"] = col
+            d["abs_offset"] = abs_start
         result.append(d)
     return result
 
@@ -420,15 +438,15 @@ def _audit_one(
     use_nlp: bool = False,
     use_llm: bool = False,
     llm_config: dict | None = None,
-) -> tuple[bool, list[Finding], list[SuppressionTrace], Allowlist | None]:
-    """Audit a single file. Returns (policy_violated, findings, traces, al)."""
-    findings, traces, al = run_with_traces(
+) -> tuple[bool, list[Finding], list[SuppressionTrace], "Allowlist | None", "Document"]:
+    """Audit a single file. Returns (policy_violated, findings, traces, al, doc)."""
+    findings, traces, al, doc = run_with_traces(
         path, use_allowlist=use_allowlist,
         use_nlp=use_nlp, use_llm=use_llm, llm_config=llm_config,
     )
     blocking = _severity_at_or_above(fail_on)
     violated = any(f.severity.value in blocking for f in findings)
-    return violated, findings, traces, al
+    return violated, findings, traces, al, doc
 
 
 def main() -> None:
@@ -507,7 +525,7 @@ def main() -> None:
 
     for fpath in args.files:
         try:
-            violated, findings, traces, al = _audit_one(
+            violated, findings, traces, al, doc = _audit_one(
                 fpath, fail_on, use_al, args.show_suppressed, args.json,
                 use_nlp=use_nlp, use_llm=use_llm,
                 llm_config=llm_config or None,
@@ -529,7 +547,7 @@ def main() -> None:
 
         per_file.append({
             "file": str(fpath),
-            "findings": findings_to_json(findings),
+            "findings": findings_to_json(findings, doc=doc),
             "summary": build_summary(findings, traces or [], fail_on, violated),
         })
 

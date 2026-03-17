@@ -245,7 +245,7 @@ body {
 
 .finding-row {
   display: grid;
-  grid-template-columns: 28px 52px 180px 1fr;
+  grid-template-columns: 28px 52px 44px 140px 1fr;
   gap: 8px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--pico-muted-border-color);
@@ -381,6 +381,83 @@ body {
   border-radius: 0 6px 6px 0;
   font-size: 0.82rem;
 }
+
+/* ── Detail panel tabs ─────────────────────────────────── */
+.detail-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--pico-muted-border-color);
+}
+.detail-tab {
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--pico-muted-color);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.detail-tab.active {
+  color: var(--pico-primary);
+  border-bottom-color: var(--pico-primary);
+}
+.detail-tab:hover { color: var(--pico-color); }
+
+/* ── Source viewer ──────────────────────────────────────── */
+#source-content { display: none; }
+#source-content.active { display: block; }
+#detail-content.active { display: block; }
+
+.source-viewer {
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: calc(100vh - var(--toolbar-height) - 80px);
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 6px;
+  background: #fafafa;
+}
+.source-viewer table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0;
+}
+.source-viewer td {
+  padding: 0 8px;
+  vertical-align: top;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.source-viewer .line-no {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+  color: #999;
+  user-select: none;
+  padding-right: 12px;
+  border-right: 1px solid #e5e7eb;
+  background: #f3f4f6;
+}
+.source-viewer .line-text { padding-left: 12px; }
+.source-viewer tr.highlight-line { background: #fef9c3; }
+.source-viewer mark {
+  background: #fbbf24;
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── Line badge in finding row ─────────────────────────── */
+.line-badge {
+  font-family: monospace;
+  font-size: 0.72rem;
+  color: var(--pico-muted-color);
+  text-align: right;
+}
 </style>
 </head>
 <body>
@@ -426,11 +503,11 @@ body {
       <input type="text" id="search-input" placeholder="Search findings...">
     </div>
     <div id="findings-list">
-      <div class="empty-state">Select files and press <strong>Scan</strong> to start audit</div>
+      <div class="empty-state">Select files and press  <strong> Scan </strong>  to start audit</div>
     </div>
   </div>
 
-  <!-- Right: Detail -->
+  <!-- Right: Detail / Source -->
   <div id="detail-panel" class="empty">
     <span>Click a finding to see details</span>
   </div>
@@ -448,6 +525,8 @@ const state = {
   searchQuery: '',
   selectedFinding: null,
   findingCounts: {},  // path → count
+  sourceTexts: {},    // path → raw text (cache)
+  activeDetailTab: 'detail',
 };
 
 // ── API helpers ──────────────────────────────────────────────────────────────
@@ -579,7 +658,7 @@ function renderFindings() {
   const groups = getFilteredFindings();
 
   if (!state.scanResult) {
-    el.innerHTML = '<div class="empty-state">Select files and press <strong>Scan</strong> to start audit</div>';
+    el.innerHTML = '<div class="empty-state">Select files and press  <strong> Scan </strong>  to start audit</div>';
     return;
   }
 
@@ -599,9 +678,11 @@ function renderFindings() {
       const f = group.findings[i];
       const fid = `${group.path}::${i}`;
       const sel = (state.selectedFinding && state.selectedFinding._id === fid) ? ' selected' : '';
+      const lineLabel = f.line ? `L${f.line}` : '';
       html += `<div class="finding-row${sel}" data-fid="${esc(fid)}" data-file="${esc(group.path)}" data-idx="${i}">`;
       html += `<span class="sev-dot ${f.severity}"></span>`;
       html += `<span class="finding-id">${esc(f.defect_id)}</span>`;
+      html += `<span class="line-badge">${esc(lineLabel)}</span>`;
       html += `<span class="finding-class">${esc(f.defect_class)}</span>`;
       html += `<span class="finding-snippet">${esc(truncate(f.evidence_text, 80))}</span>`;
       html += `</div>`;
@@ -644,15 +725,44 @@ function renderDetail() {
   if (!f) {
     el.className = 'empty';
     el.innerHTML = '<span>Click a finding to see details</span>';
-    el.id = 'detail-panel';
     return;
   }
 
   el.className = '';
-  el.id = 'detail-panel';
 
+  // Build tabs + two content panes
   let html = '';
+  const detailActive = state.activeDetailTab === 'detail';
+  html += `<div class="detail-tabs">`;
+  html += `<button class="detail-tab${detailActive ? ' active' : ''}" data-tab="detail">Detail</button>`;
+  html += `<button class="detail-tab${!detailActive ? ' active' : ''}" data-tab="source">Source</button>`;
+  html += `</div>`;
+  html += `<div id="detail-content" style="${detailActive ? '' : 'display:none'}">`;
+  html += buildDetailHTML(f);
+  html += `</div>`;
+  html += `<div id="source-content" style="${detailActive ? 'display:none' : ''}">`;
+  html += '<div class="loading-state">Loading source...</div>';
+  html += `</div>`;
 
+  el.innerHTML = html;
+
+  // Tab switching
+  el.querySelectorAll('.detail-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      state.activeDetailTab = tab.dataset.tab;
+      el.querySelectorAll('.detail-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === state.activeDetailTab));
+      document.getElementById('detail-content').style.display = state.activeDetailTab === 'detail' ? '' : 'none';
+      document.getElementById('source-content').style.display = state.activeDetailTab === 'source' ? '' : 'none';
+      if (state.activeDetailTab === 'source') loadAndRenderSource(f);
+    });
+  });
+
+  // If source tab is already active, load source
+  if (!detailActive) loadAndRenderSource(f);
+}
+
+function buildDetailHTML(f) {
+  let html = '';
   // Header
   html += `<div class="detail-section">`;
   html += `<span class="sev-tag ${f.severity}">${f.severity}</span> `;
@@ -663,6 +773,7 @@ function renderDetail() {
   html += `<div class="detail-section"><h4>Metadata</h4>`;
   html += `<dl class="detail-meta">`;
   html += `<dt>Section</dt><dd>${esc(f.section_heading || '(none)')}</dd>`;
+  if (f.line) html += `<dt>Line</dt><dd>${f.line}${f.col ? ':' + f.col : ''}</dd>`;
   html += `<dt>Confidence</dt><dd>${esc(f.confidence)}</dd>`;
   if (f.matched_term) html += `<dt>Term</dt><dd>${esc(f.matched_term)}</dd>`;
   if (f.term_category) html += `<dt>Category</dt><dd>${esc(f.term_category)}</dd>`;
@@ -684,8 +795,84 @@ function renderDetail() {
     html += `<div class="detail-section"><h4>Remediation</h4>`;
     html += `<div class="remediation-box">${esc(f.remediation_hint)}</div></div>`;
   }
+  return html;
+}
 
-  el.innerHTML = html;
+// ── Source viewer ─────────────────────────────────────────────────────────────
+async function fetchSource(filePath) {
+  if (state.sourceTexts[filePath] !== undefined) return state.sourceTexts[filePath];
+  try {
+    const data = await apiGet('/api/source?path=' + encodeURIComponent(filePath));
+    state.sourceTexts[filePath] = data.text;
+    return data.text;
+  } catch (e) {
+    return null;
+  }
+}
+
+async function loadAndRenderSource(f) {
+  const container = document.getElementById('source-content');
+  if (!container) return;
+
+  // Find the file path for this finding
+  const filePath = f.document_path;
+  if (!filePath) {
+    container.innerHTML = '<div class="empty-state">No source path available</div>';
+    return;
+  }
+
+  const text = await fetchSource(filePath);
+  if (text === null) {
+    container.innerHTML = '<div class="empty-state">Could not load source file</div>';
+    return;
+  }
+
+  const lines = text.split('\n');
+  const absOffset = f.abs_offset;
+  const evidenceLen = f.evidence_text ? f.evidence_text.length : 0;
+  const highlightLine = f.line || 0;
+
+  // Compute per-line char offsets for marking evidence
+  let lineOffsets = []; // lineOffsets[i] = char offset where line i starts
+  let off = 0;
+  for (let i = 0; i < lines.length; i++) {
+    lineOffsets.push(off);
+    off += lines[i].length + 1; // +1 for \n
+  }
+
+  const evStart = absOffset != null ? absOffset : -1;
+  const evEnd = evStart >= 0 ? evStart + evidenceLen : -1;
+
+  let html = '<div class="source-viewer"><table>';
+  for (let i = 0; i < lines.length; i++) {
+    const lineStart = lineOffsets[i];
+    const lineEnd = lineStart + lines[i].length;
+    const isHighlight = (i + 1) === highlightLine;
+    html += `<tr${isHighlight ? ' class="highlight-line"' : ''} data-line="${i+1}">`;
+    html += `<td class="line-no">${i + 1}</td>`;
+
+    // Check if evidence overlaps this line
+    if (evStart >= 0 && evEnd > lineStart && evStart < lineEnd) {
+      // Evidence overlaps this line — insert <mark>
+      const markStart = Math.max(0, evStart - lineStart);
+      const markEnd = Math.min(lines[i].length, evEnd - lineStart);
+      const before = lines[i].slice(0, markStart);
+      const marked = lines[i].slice(markStart, markEnd);
+      const after = lines[i].slice(markEnd);
+      html += `<td class="line-text">${esc(before)}<mark>${esc(marked)}</mark>${esc(after)}</td>`;
+    } else {
+      html += `<td class="line-text">${esc(lines[i])}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += '</table></div>';
+  container.innerHTML = html;
+
+  // Scroll to the highlighted line
+  if (highlightLine > 0) {
+    const row = container.querySelector(`tr[data-line="${highlightLine}"]`);
+    if (row) row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 }
 
 // ── Summary bar ──────────────────────────────────────────────────────────────
