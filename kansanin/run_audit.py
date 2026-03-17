@@ -99,11 +99,33 @@ def _spans_overlap(a: tuple[int, int], b: tuple[int, int]) -> bool:
     return a[0] < b[1] and b[0] < a[1]
 
 
+def _dedup_intra_detector(findings: list[Finding]) -> list[Finding]:
+    """Remove duplicate findings from the same detector with identical evidence in the same sentence.
+
+    When a term appears multiple times in one sentence (e.g. first in a list,
+    then in a description), keep only the first occurrence per
+    (defect_id, evidence_text, sentence_id) triple.
+    """
+    seen: set[tuple[str, str, str]] = set()
+    result: list[Finding] = []
+    for f in findings:
+        key = (f.defect_id, f.evidence_text.lower().strip(), f.sentence_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(f)
+    return result
+
+
 def _dedup_cross_detector(findings: list[Finding]) -> list[Finding]:
     """Remove less-specific findings when two detectors overlap on the same evidence."""
+    # Phase 1: intra-detector dedup (same term twice in same sentence)
+    findings = _dedup_intra_detector(findings)
+
     if not _DEDUP_RULES:
         return findings
 
+    # Phase 2: cross-detector dedup
     # Build a quick lookup: (section_id, sentence_id) → list of findings
     grouped: dict[tuple[str, str], list[Finding]] = defaultdict(list)
     for f in findings:
