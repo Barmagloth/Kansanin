@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # kansanin — контекст проекта для Cowork-сессий
-# Последнее обновление: 2026-03-16
-# Версия пакета: v0.16.0
+# Последнее обновление: 2026-03-17
+# Версия пакета: v0.19.0
 
 ---
 
@@ -59,9 +59,12 @@ kansanin/
 │   ├── engine.py              # 3-level allowlist engine (v0.2.0)
 │   ├── schema.py              # schema validation (v0.1.0)
 │   └── validate_allowlist.py  # CLI validator (v0.1.0)
+├── web/
+│   ├── server.py              # stdlib HTTP server, 5 endpoints, bilingual i18n enrichment (v0.19.0)
+│   └── static/index.html      # SPA dashboard: findings table, settings panel, locale dropdown, filters
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.16.0)
-├── __init__.py                # __version__ = "0.16.0"
+├── run_audit.py               # CLI точка входа (v0.19.0)
+├── __init__.py                # __version__ = "0.19.0"
 ├── fixtures/
 │   ├── good_placeholders.md
 │   ├── good_escape_clauses.md
@@ -233,19 +236,17 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 
 ## Что открыто / следующие шаги
 
-**Выполнено (Phase 1 + Phase 2):**
-- ✅ D007 UNTESTABLE_REQUIREMENT — реализован v0.1.0 (Phase 1, коммит 30ff30d)
-- ✅ D003 UNDEFINED_ACRONYM — реализован v0.1.0 (Phase 2, коммит bdc04b4)
-- ✅ D006 MISSING_PRIORITY — реализован v0.1.0 (Phase 2, коммит bdc04b4)
-- ✅ `pyproject.toml` — pip-installable, CLI entry point `kansanin`
-- ✅ `calibrate.py` v0.4.0 — мигрирован на новый API
-- ✅ Backward-compat shims удалены (document_model.py, markdown_ingest.py, section_roles.py)
-- ✅ Корпус расширен до 17 документов, 169 findings
-- ✅ `baseline_v0_5_x.md` — зафиксирован
-- ✅ `evaluation_summary_v0_5_0.md` — собран
-- ✅ Allowlist v0.6.0 — реализован (3-level, exact match, defect_id scoping, trace)
+**Web Dashboard (v0.19.0, текущее состояние):**
+- ✅ SPA: file tree, findings table, severity filters, search, Detail/Source tabs, resizable panels
+- ✅ Locale dropdown (EN/RU), confidence blocks (1–3), instant suppression
+- ✅ Settings panel (⚙): NLP/LLM toggles, LLM config (provider/model/temperature)
+- ✅ Search filter buttons: Line, Confidence, Category, Section Role
+- ✅ Bilingual remediation + description enrichment (server-side i18n tables)
+- ⬜ Мультиязычные описания детекторов — отдельная задача: переработка всех 16 детекторов для полной i18n (динамические message-ы с evidence, не статические description)
+- ⬜ Дополнительные языки интерфейса (сейчас EN/RU)
+- ⬜ Плагины для Jira, Azure DevOps, СТАРТ
 
-**Phase 2 hardening (текущий приоритет):**
+**Phase 2 hardening:**
 - D001+D002 cross-detector dedup — «при необходимости» double-hit
 - D004 heading heuristics alignment с `normalize/suppression.py`
 

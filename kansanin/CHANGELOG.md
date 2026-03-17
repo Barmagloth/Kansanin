@@ -5,6 +5,34 @@
 
 ---
 
+## [0.19.0] — 2026-03-17
+
+### Changed — Web Dashboard UX overhaul
+
+- **Locale selector**: EN/RU buttons → `<select>` dropdown (easy to add new languages).
+- **Confidence display**: text labels replaced with numeric scale 1–3 + filled/empty block icons (`▓▓░` = MEDIUM). Avoids confusion with severity, which also used high/medium/low.
+- **Instant suppression**: after adding an allowlist entry, finding moves to suppressed list locally without re-scan.
+- **Summary bar** moved from toolbar to above findings panel for better spatial association.
+- **Settings panel** (⚙ button): NLP/LLM toggles moved from toolbar into a modal overlay. Added LLM config fields: provider, model, temperature — passed to `run_with_traces()` on scan.
+- **Search filter buttons**: Line, Confidence, Category, Section Role — narrow `matchesSearch()` to a single field. Labels localized per language.
+- **Bilingual descriptions**: `_enrich_description_i18n()` added in `server.py` — findings JSON now includes `description_en`/`description_ru` from `_DETECTOR_META`.
+- **Root dir fix**: `/api/files` now resolves root path and updates `KansaninHandler.root_dir` so subsequent scan path-boundary checks work correctly.
+- **LLM config passthrough**: `_handle_scan()` reads `llm_provider`, `llm_model`, `llm_temperature` from request body and passes `llm_config` dict to `run_with_traces()`.
+
+### Fixed
+
+- SUP/СКР badge last character wrapping to new line (`white-space: nowrap; min-width: max-content`).
+- Locale `<select>` stretching full toolbar width under Pico CSS flex (`width: auto`).
+
+### Docs
+
+- **README**: added "LLM tier: when to use it" section (non-determinism warning, recommend default fallback).
+- **README**: D013 limitations — semantic similarity ≠ formal verification (TLA+/Alloy); it's anomaly detection.
+- **README**: "Formal verification" added to Non-goals.
+- **README**: TODO section — additional languages, Jira/ADO/СТАРТ plugins, D013 improvement.
+
+---
+
 ## [0.18.0] — 2026-03-17
 
 ### Added — Web Dashboard + Line/Col Tracking
