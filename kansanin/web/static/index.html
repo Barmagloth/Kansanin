@@ -585,6 +585,27 @@ body {
 }
 .al-status.success { color: #16a34a; }
 .al-status.error   { color: var(--sev-critical); }
+.locale-toggle {
+  display: flex;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.locale-btn {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  cursor: pointer;
+  margin: 0;
+}
+.locale-btn:hover { color: white; }
+.locale-btn.active {
+  background: rgba(255,255,255,0.2);
+  color: white;
+}
 </style>
 </head>
 <body>
@@ -601,6 +622,10 @@ body {
   <button id="btn-scan" class="primary-btn">Scan</button>
   <button id="btn-clear">Clear</button>
   <button id="btn-export">Export JSON</button>
+  <div class="locale-toggle">
+    <button class="locale-btn active" data-lang="en" onclick="setLocale('en')">EN</button>
+    <button class="locale-btn" data-lang="ru" onclick="setLocale('ru')">RU</button>
+  </div>
 </div>
 
 <!-- ── Main layout ───────────────────────────────────────── -->
@@ -664,7 +689,192 @@ const state = {
   sourceTexts: {},    // path → raw text (cache)
   activeDetailTab: 'detail',
   showSuppressed: false,
+  locale: localStorage.getItem('kansanin-locale') || 'en',
 };
+
+const _I18N = {
+  en: {
+    appTitle: 'Kansanin',
+    selectAndScan: 'Select files and press Scan',
+    scan: 'Scan',
+    clear: 'Clear',
+    exportJson: 'Export JSON',
+    files: 'Files',
+    changeRoot: 'Change root directory',
+    selectAll: 'All',
+    selectAllTitle: 'Select all files',
+    deselectAll: 'None',
+    deselectAllTitle: 'Deselect all',
+    loadingFiles: 'Loading files...',
+    noDocuments: 'No documents found',
+    critical: 'Critical',
+    high: 'High',
+    medium: 'Medium',
+    low: 'Low',
+    info: 'Info',
+    searchPlaceholder: 'Search findings...',
+    suppressed: 'Suppressed',
+    emptyState: 'Select files and press Scan to start audit',
+    noMatch: 'No findings match current filters',
+    clickFinding: 'Click a finding to see details',
+    detail: 'Detail',
+    source: 'Source',
+    loadingSource: 'Loading source...',
+    metadata: 'Metadata',
+    section: 'Section',
+    line: 'Line',
+    confidence: 'Confidence',
+    term: 'Term',
+    category: 'Category',
+    sectionRole: 'Section role',
+    llmLabel: 'LLM',
+    llmConfidence: 'LLM confidence',
+    evidence: 'Evidence',
+    description: 'Description',
+    remediation: 'Remediation',
+    allowlisted: 'Allowlisted',
+    addToAllowlist: 'Add to Allowlist',
+    reason: 'Reason',
+    owner: 'Owner',
+    expires: 'Expires',
+    sectionRoles: 'Section roles',
+    reasonPlaceholder: 'Why is this finding acceptable?',
+    ownerPlaceholder: 'Who made this decision?',
+    reasonRequired: 'Reason is required.',
+    noDocPath: 'No document path available.',
+    saving: 'Saving...',
+    done: 'Done',
+    savedTo: 'Saved to',
+    rescanHint: 'Re-scan to see changes.',
+    couldNotLoadSource: 'Could not load source file:',
+    noSourcePath: 'No source path available',
+    scanFailed: 'Scan failed:',
+    failedLoadFiles: 'Failed to load files:',
+    failedLoadDir: 'Failed to load directory:',
+    runningAudit: 'Running audit...',
+    selectAtLeastOne: 'Select at least one file to scan.',
+    nothingToExport: 'Nothing to export. Run a scan first.',
+    findings: 'findings',
+    across: 'across',
+    filesWord: 'files',
+    summCritical: 'critical',
+    summHigh: 'high',
+    summMedium: 'medium',
+    summLow: 'low',
+    summInfo: 'info',
+    suppBadge: 'SUP',
+    findingsCount: '(1 or more)',
+    none: '(none)',
+  },
+  ru: {
+    appTitle: 'Kansanin',
+    selectAndScan: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043b\u044b \u0438 \u043d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u0410\u0443\u0434\u0438\u0442\u00bb',
+    scan: '\u0410\u0443\u0434\u0438\u0442',
+    clear: '\u041e\u0447\u0438\u0441\u0442\u0438\u0442\u044c',
+    exportJson: '\u042d\u043a\u0441\u043f\u043e\u0440\u0442 JSON',
+    files: '\u0424\u0430\u0439\u043b\u044b',
+    changeRoot: '\u0421\u043c\u0435\u043d\u0438\u0442\u044c \u043a\u043e\u0440\u043d\u0435\u0432\u043e\u0439 \u043a\u0430\u0442\u0430\u043b\u043e\u0433',
+    selectAll: '\u0412\u0441\u0435',
+    selectAllTitle: '\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0432\u0441\u0435 \u0444\u0430\u0439\u043b\u044b',
+    deselectAll: '\u041d\u0435\u0442',
+    deselectAllTitle: '\u0421\u043d\u044f\u0442\u044c \u0432\u044b\u0434\u0435\u043b\u0435\u043d\u0438\u0435',
+    loadingFiles: '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0444\u0430\u0439\u043b\u043e\u0432...',
+    noDocuments: '\u0414\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u044b \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+    critical: '\u041a\u0440\u0438\u0442\u0438\u0447.',
+    high: '\u0412\u044b\u0441\u043e\u043a.',
+    medium: '\u0421\u0440\u0435\u0434\u043d.',
+    low: '\u041d\u0438\u0437\u043a.',
+    info: '\u0418\u043d\u0444\u043e',
+    searchPlaceholder: '\u041f\u043e\u0438\u0441\u043a \u043f\u043e \u043d\u0430\u0445\u043e\u0434\u043a\u0430\u043c...',
+    suppressed: '\u0421\u043a\u0440\u044b\u0442\u044b\u0435',
+    emptyState: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0444\u0430\u0439\u043b\u044b \u0438 \u043d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u0410\u0443\u0434\u0438\u0442\u00bb',
+    noMatch: '\u041d\u0435\u0442 \u043d\u0430\u0445\u043e\u0434\u043e\u043a \u043f\u043e \u0442\u0435\u043a\u0443\u0449\u0438\u043c \u0444\u0438\u043b\u044c\u0442\u0440\u0430\u043c',
+    clickFinding: '\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043d\u0430 \u043d\u0430\u0445\u043e\u0434\u043a\u0443 \u0434\u043b\u044f \u043f\u0440\u043e\u0441\u043c\u043e\u0442\u0440\u0430 \u0434\u0435\u0442\u0430\u043b\u0435\u0439',
+    detail: '\u0414\u0435\u0442\u0430\u043b\u0438',
+    source: '\u0418\u0441\u0445\u043e\u0434\u043d\u0438\u043a',
+    loadingSource: '\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0430...',
+    metadata: '\u041c\u0435\u0442\u0430\u0434\u0430\u043d\u043d\u044b\u0435',
+    section: '\u0421\u0435\u043a\u0446\u0438\u044f',
+    line: '\u0421\u0442\u0440\u043e\u043a\u0430',
+    confidence: '\u0423\u0432\u0435\u0440\u0435\u043d\u043d\u043e\u0441\u0442\u044c',
+    term: '\u0422\u0435\u0440\u043c\u0438\u043d',
+    category: '\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f',
+    sectionRole: '\u0420\u043e\u043b\u044c \u0441\u0435\u043a\u0446\u0438\u0438',
+    llmLabel: 'LLM',
+    llmConfidence: '\u0423\u0432\u0435\u0440\u0435\u043d\u043d\u043e\u0441\u0442\u044c LLM',
+    evidence: '\u0421\u0432\u0438\u0434\u0435\u0442\u0435\u043b\u044c\u0441\u0442\u0432\u043e',
+    description: '\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435',
+    remediation: '\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0430\u0446\u0438\u044f',
+    allowlisted: '\u0412 allowlist',
+    addToAllowlist: '\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u0432 allowlist',
+    reason: '\u041f\u0440\u0438\u0447\u0438\u043d\u0430',
+    owner: '\u041e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u044b\u0439',
+    expires: '\u0421\u0440\u043e\u043a \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044f',
+    sectionRoles: '\u0420\u043e\u043b\u0438 \u0441\u0435\u043a\u0446\u0438\u0439',
+    reasonPlaceholder: '\u041f\u043e\u0447\u0435\u043c\u0443 \u044d\u0442\u0430 \u043d\u0430\u0445\u043e\u0434\u043a\u0430 \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u0430?',
+    ownerPlaceholder: '\u041a\u0442\u043e \u043f\u0440\u0438\u043d\u044f\u043b \u0440\u0435\u0448\u0435\u043d\u0438\u0435?',
+    reasonRequired: '\u041f\u0440\u0438\u0447\u0438\u043d\u0430 \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u0430.',
+    noDocPath: '\u041f\u0443\u0442\u044c \u043a \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0443 \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442.',
+    saving: '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435...',
+    done: '\u0413\u043e\u0442\u043e\u0432\u043e',
+    savedTo: '\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e \u0432',
+    rescanHint: '\u041f\u0435\u0440\u0435\u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0430\u0443\u0434\u0438\u0442 \u0434\u043b\u044f \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f.',
+    couldNotLoadSource: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a:',
+    noSourcePath: '\u041f\u0443\u0442\u044c \u043a \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0443 \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442',
+    scanFailed: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0430\u0443\u0434\u0438\u0442\u0430:',
+    failedLoadFiles: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438 \u0444\u0430\u0439\u043b\u043e\u0432:',
+    failedLoadDir: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430:',
+    runningAudit: '\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0430\u0443\u0434\u0438\u0442...',
+    selectAtLeastOne: '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0445\u043e\u0442\u044f \u0431\u044b \u043e\u0434\u0438\u043d \u0444\u0430\u0439\u043b.',
+    nothingToExport: '\u041d\u0435\u0447\u0435\u0433\u043e \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c. \u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0430\u0443\u0434\u0438\u0442.',
+    findings: '\u043d\u0430\u0445\u043e\u0434\u043e\u043a',
+    across: '\u0432',
+    filesWord: '\u0444\u0430\u0439\u043b\u0430\u0445',
+    summCritical: '\u043a\u0440\u0438\u0442\u0438\u0447.',
+    summHigh: '\u0432\u044b\u0441\u043e\u043a.',
+    summMedium: '\u0441\u0440\u0435\u0434\u043d.',
+    summLow: '\u043d\u0438\u0437\u043a.',
+    summInfo: '\u0438\u043d\u0444\u043e',
+    suppBadge: '\u0421\u041a\u0420',
+    findingsCount: '(1+)',
+    none: '(\u043d\u0435\u0442)',
+  }
+};
+
+function t(key) { return (_I18N[state.locale] || _I18N.en)[key] || key; }
+
+function setLocale(lang) {
+  state.locale = lang;
+  localStorage.setItem('kansanin-locale', lang);
+  document.querySelectorAll('.locale-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  renderAll();
+}
+
+function renderAll() {
+  document.getElementById('btn-scan').textContent = t('scan');
+  document.getElementById('btn-clear').textContent = t('clear');
+  document.getElementById('btn-export').textContent = t('exportJson');
+  document.getElementById('btn-change-root').title = t('changeRoot');
+  document.getElementById('btn-select-all').textContent = t('selectAll');
+  document.getElementById('btn-select-all').title = t('selectAllTitle');
+  document.getElementById('btn-select-none').textContent = t('deselectAll');
+  document.getElementById('btn-select-none').title = t('deselectAllTitle');
+  document.getElementById('search-input').placeholder = t('searchPlaceholder');
+  document.querySelectorAll('.sev-chip').forEach(chip => {
+    const sev = chip.dataset.sev;
+    const icon = chip.innerHTML.split(' ')[0];
+    chip.innerHTML = icon + ' ' + t(sev);
+  });
+  const suppLabel = document.getElementById('toggle-suppressed').parentElement;
+  suppLabel.childNodes[suppLabel.childNodes.length - 1].textContent = ' ' + t('suppressed');
+  document.querySelector('#file-panel-header h3').textContent = t('files');
+  renderFileTree();
+  renderFindings();
+  renderDetail();
+  renderSummary();
+}
 
 // ── API helpers ──────────────────────────────────────────────────────────────
 async function apiGet(url) {
@@ -717,7 +927,7 @@ function renderTreeNode(node, depth = 0) {
 function renderFileTree() {
   const el = document.getElementById('file-tree');
   if (!state.fileTree.length) {
-    el.innerHTML = '<div class="empty-state">No documents found</div>';
+    el.innerHTML = '<div class="empty-state">' + t('noDocuments') + '</div>';
     return;
   }
   let html = '';
@@ -817,12 +1027,12 @@ function renderFindings() {
   const groups = getFilteredFindings();
 
   if (!state.scanResult) {
-    el.innerHTML = '<div class="empty-state">Select files and press Scan to start audit</div>';
+    el.innerHTML = '<div class="empty-state">' + t('emptyState') + '</div>';
     return;
   }
 
   if (groups.length === 0) {
-    el.innerHTML = '<div class="empty-state">No findings match current filters</div>';
+    el.innerHTML = '<div class="empty-state">' + t('noMatch') + '</div>';
     return;
   }
 
@@ -842,7 +1052,7 @@ function renderFindings() {
       const lineLabel = f.line ? `L${f.line}` : '';
       html += `<div class="finding-row${sel}${suppCls}" data-fid="${esc(fid)}" data-file="${esc(group.path)}" data-idx="${i}">`;
       if (f._is_suppressed) {
-        html += `<span class="suppressed-badge">SUP</span>`;
+        html += `<span class="suppressed-badge">${t('suppBadge')}</span>`;
       } else {
         html += `<span class="sev-dot ${f.severity}"></span>`;
       }
@@ -890,7 +1100,7 @@ function renderDetail() {
 
   if (!f) {
     el.className = 'empty';
-    el.innerHTML = '<span>Click a finding to see details</span>';
+    el.innerHTML = '<span>' + t('clickFinding') + '</span>';
     return;
   }
 
@@ -900,14 +1110,14 @@ function renderDetail() {
   let html = '';
   const detailActive = state.activeDetailTab === 'detail';
   html += `<div class="detail-tabs">`;
-  html += `<button class="detail-tab${detailActive ? ' active' : ''}" data-tab="detail">Detail</button>`;
-  html += `<button class="detail-tab${!detailActive ? ' active' : ''}" data-tab="source">Source</button>`;
+  html += `<button class="detail-tab${detailActive ? ' active' : ''}" data-tab="detail">${t('detail')}</button>`;
+  html += `<button class="detail-tab${!detailActive ? ' active' : ''}" data-tab="source">${t('source')}</button>`;
   html += `</div>`;
   html += `<div id="detail-content" style="${detailActive ? '' : 'display:none'}">`;
   html += buildDetailHTML(f);
   html += `</div>`;
   html += `<div id="source-content" style="${detailActive ? 'display:none' : ''}">`;
-  html += '<div class="loading-state">Loading source...</div>';
+  html += '<div class="loading-state">' + t('loadingSource') + '</div>';
   html += `</div>`;
 
   el.innerHTML = html;
@@ -942,30 +1152,33 @@ function buildDetailHTML(f) {
   html += `</div>`;
 
   // Metadata
-  html += `<div class="detail-section"><h4>Metadata</h4>`;
+  html += `<div class="detail-section"><h4>${t('metadata')}</h4>`;
   html += `<dl class="detail-meta">`;
-  html += `<dt>Section</dt><dd>${esc(f.section_heading || '(none)')}</dd>`;
-  if (f.line) html += `<dt>Line</dt><dd>${f.line}${f.col ? ':' + f.col : ''}</dd>`;
-  html += `<dt>Confidence</dt><dd>${esc(f.confidence)}</dd>`;
-  if (f.matched_term) html += `<dt>Term</dt><dd>${esc(f.matched_term)}</dd>`;
-  if (f.term_category) html += `<dt>Category</dt><dd>${esc(f.term_category)}</dd>`;
-  if (f.section_role) html += `<dt>Section role</dt><dd>${esc(f.section_role)}</dd>`;
-  if (f.llm_provider) html += `<dt>LLM</dt><dd>${esc(f.llm_provider)}${f.llm_model ? ' / ' + esc(f.llm_model) : ''}</dd>`;
-  if (f.llm_confidence_raw != null) html += `<dt>LLM confidence</dt><dd>${(f.llm_confidence_raw * 100).toFixed(0)}%</dd>`;
+  html += `<dt>${t('section')}</dt><dd>${esc(f.section_heading || t('none'))}</dd>`;
+  if (f.line) html += `<dt>${t('line')}</dt><dd>${f.line}${f.col ? ':' + f.col : ''}</dd>`;
+  html += `<dt>${t('confidence')}</dt><dd>${esc(f.confidence)}</dd>`;
+  if (f.matched_term) html += `<dt>${t('term')}</dt><dd>${esc(f.matched_term)}</dd>`;
+  if (f.term_category) html += `<dt>${t('category')}</dt><dd>${esc(f.term_category)}</dd>`;
+  if (f.section_role) html += `<dt>${t('sectionRole')}</dt><dd>${esc(f.section_role)}</dd>`;
+  if (f.llm_provider) html += `<dt>${t('llmLabel')}</dt><dd>${esc(f.llm_provider)}${f.llm_model ? ' / ' + esc(f.llm_model) : ''}</dd>`;
+  if (f.llm_confidence_raw != null) html += `<dt>${t('llmConfidence')}</dt><dd>${(f.llm_confidence_raw * 100).toFixed(0)}%</dd>`;
   html += `</dl></div>`;
 
   // Evidence
-  html += `<div class="detail-section"><h4>Evidence</h4>`;
+  html += `<div class="detail-section"><h4>${t('evidence')}</h4>`;
   html += `<pre>${esc(f.evidence_text)}</pre></div>`;
 
   // Message
-  html += `<div class="detail-section"><h4>Description</h4>`;
+  html += `<div class="detail-section"><h4>${t('description')}</h4>`;
   html += `<p>${esc(f.message)}</p></div>`;
 
   // Remediation
-  if (f.remediation_hint) {
-    html += `<div class="detail-section"><h4>Remediation</h4>`;
-    html += `<div class="remediation-box">${esc(f.remediation_hint)}</div></div>`;
+  const remText = state.locale === 'ru'
+    ? (f.remediation_ru || f.remediation_hint)
+    : (f.remediation_en || f.remediation_hint);
+  if (remText) {
+    html += `<div class="detail-section"><h4>${t('remediation')}</h4>`;
+    html += `<div class="remediation-box">${esc(remText)}</div></div>`;
   }
 
   // Allowlist section
@@ -980,40 +1193,40 @@ function buildAllowlistHTML(f) {
   if (f._is_suppressed && f._allowlist_entry) {
     // ── Already suppressed: show read-only entry ──
     const e = f._allowlist_entry;
-    html += `<h4>&#x2705; Allowlisted <span class="scope-badge ${esc(e.scope)}">${esc(e.scope)}</span></h4>`;
-    html += `<div class="al-form-group"><label>Term</label>`;
+    html += `<h4>&#x2705; ${t('allowlisted')} <span class="scope-badge ${esc(e.scope)}">${esc(e.scope)}</span></h4>`;
+    html += `<div class="al-form-group"><label>${t('term')}</label>`;
     html += `<input type="text" readonly value="${esc(e.term)}"></div>`;
     html += `<div class="al-form-group"><label>Defect ID</label>`;
     html += `<input type="text" readonly value="${esc(e.defect_id)}"></div>`;
-    html += `<div class="al-form-group"><label>Reason</label>`;
+    html += `<div class="al-form-group"><label>${t('reason')}</label>`;
     html += `<textarea readonly>${esc(e.reason)}</textarea></div>`;
     if (e.owner) {
-      html += `<div class="al-form-group"><label>Owner</label>`;
+      html += `<div class="al-form-group"><label>${t('owner')}</label>`;
       html += `<input type="text" readonly value="${esc(e.owner)}"></div>`;
     }
     if (e.expires) {
-      html += `<div class="al-form-group"><label>Expires</label>`;
+      html += `<div class="al-form-group"><label>${t('expires')}</label>`;
       html += `<input type="text" readonly value="${esc(e.expires)}"></div>`;
     }
     if (e.applies_to_section_roles && e.applies_to_section_roles.length > 0) {
-      html += `<div class="al-form-group"><label>Section roles</label>`;
+      html += `<div class="al-form-group"><label>${t('sectionRoles')}</label>`;
       html += `<input type="text" readonly value="${esc(e.applies_to_section_roles.join(', '))}"></div>`;
     }
     html += `<div style="font-size:0.72rem;color:var(--pico-muted-color);margin-top:6px">Source: ${esc(e.source_file)}</div>`;
   } else {
     // ── Not suppressed: show editable form ──
-    html += `<h4>&#x1F6E1; Add to Allowlist</h4>`;
-    html += `<div class="al-form-group"><label>Term</label>`;
+    html += `<h4>&#x1F6E1; ${t('addToAllowlist')}</h4>`;
+    html += `<div class="al-form-group"><label>${t('term')}</label>`;
     html += `<input type="text" readonly value="${esc(f.evidence_text)}"></div>`;
     html += `<div class="al-form-group"><label>Defect ID</label>`;
     html += `<input type="text" readonly value="${esc(f.defect_id)}"></div>`;
-    html += `<div class="al-form-group"><label>Reason <span style="color:var(--sev-critical)">*</span></label>`;
-    html += `<textarea id="al-reason" placeholder="Why is this finding acceptable?"></textarea></div>`;
-    html += `<div class="al-form-group"><label>Owner</label>`;
-    html += `<input type="text" id="al-owner" placeholder="Who made this decision?"></div>`;
-    html += `<div class="al-form-group"><label>Expires</label>`;
+    html += `<div class="al-form-group"><label>${t('reason')} <span style="color:var(--sev-critical)">*</span></label>`;
+    html += `<textarea id="al-reason" placeholder="${t('reasonPlaceholder')}"></textarea></div>`;
+    html += `<div class="al-form-group"><label>${t('owner')}</label>`;
+    html += `<input type="text" id="al-owner" placeholder="${t('ownerPlaceholder')}"></div>`;
+    html += `<div class="al-form-group"><label>${t('expires')}</label>`;
     html += `<input type="date" id="al-expires"></div>`;
-    html += `<button class="al-submit-btn" id="al-submit">Add to Allowlist</button>`;
+    html += `<button class="al-submit-btn" id="al-submit">${t('addToAllowlist')}</button>`;
     html += `<div class="al-status" id="al-status"></div>`;
   }
 
@@ -1030,13 +1243,13 @@ async function submitAllowlistEntry(f) {
   const btn = document.getElementById('al-submit');
 
   if (!reason) {
-    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = 'Reason is required.'; }
+    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = t('reasonRequired'); }
     return;
   }
 
   const docPath = f.document_path || f._file_path;
   if (!docPath) {
-    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = 'No document path available.'; }
+    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = t('noDocPath'); }
     return;
   }
 
@@ -1051,22 +1264,22 @@ async function submitAllowlistEntry(f) {
   if (f.section_role) body.section_roles = [f.section_role];
 
   btn.disabled = true;
-  btn.textContent = 'Saving...';
+  btn.textContent = t('saving');
 
   try {
     const res = await apiPost('/api/allowlist', body);
     if (statusEl) {
       statusEl.className = 'al-status success';
-      statusEl.textContent = `Saved to ${res.file.split(/[\\/]/).pop()}. Re-scan to see changes.`;
+      statusEl.textContent = `${t('savedTo')} ${res.file.split(/[\\/]/).pop()}. ${t('rescanHint')}`;
     }
-    btn.textContent = 'Done';
+    btn.textContent = t('done');
   } catch (err) {
     if (statusEl) {
       statusEl.className = 'al-status error';
       statusEl.textContent = err.message;
     }
     btn.disabled = false;
-    btn.textContent = 'Add to Allowlist';
+    btn.textContent = t('addToAllowlist');
   }
 }
 
@@ -1089,7 +1302,7 @@ async function loadAndRenderSource(f) {
   // Find the file path for this finding (try document_path, then group-level _file_path)
   const filePath = f.document_path || f._file_path;
   if (!filePath) {
-    container.innerHTML = '<div class="empty-state">No source path available</div>';
+    container.innerHTML = '<div class="empty-state">' + t('noSourcePath') + '</div>';
     return;
   }
 
@@ -1099,7 +1312,7 @@ async function loadAndRenderSource(f) {
     text = await fetchSource(f._file_path);
   }
   if (text === null) {
-    container.innerHTML = `<div class="empty-state">Could not load source file:<br><code>${esc(filePath)}</code></div>`;
+    container.innerHTML = `<div class="empty-state">${t('couldNotLoadSource')}<br><code>${esc(filePath)}</code></div>`;
     return;
   }
 
@@ -1157,31 +1370,32 @@ async function loadAndRenderSource(f) {
 function renderSummary() {
   const el = document.getElementById('summary-bar');
   if (!state.scanResult) {
-    el.textContent = 'Select files and press Scan';
+    el.textContent = t('selectAndScan');
     return;
   }
-  const t = state.scanResult.totals;
+  const totals = state.scanResult.totals;
+  const sevMap = { critical: 'summCritical', high: 'summHigh', medium: 'summMedium', low: 'summLow', info: 'summInfo' };
   const parts = [];
-  for (const [sev, count] of Object.entries(t.by_severity || {})) {
-    if (count > 0) parts.push(`${count} ${sev}`);
+  for (const [sev, count] of Object.entries(totals.by_severity || {})) {
+    if (count > 0) parts.push(`${count} ${t(sevMap[sev] || sev)}`);
   }
-  const suppInfo = t.suppressed > 0 ? ` · ${t.suppressed} suppressed` : '';
-  el.textContent = `${t.total_findings} findings (${parts.join(', ')}) across ${t.files} files${suppInfo}`;
+  const suppInfo = totals.suppressed > 0 ? ` \u00b7 ${totals.suppressed} ${t('suppressed').toLowerCase()}` : '';
+  el.textContent = `${totals.total_findings} ${t('findings')} (${parts.join(', ')}) ${t('across')} ${totals.files} ${t('filesWord')}${suppInfo}`;
 }
 
 // ── Scan ─────────────────────────────────────────────────────────────────────
 async function doScan() {
   const paths = Array.from(state.selectedFiles);
   if (paths.length === 0) {
-    alert('Select at least one file to scan.');
+    alert(t('selectAtLeastOne'));
     return;
   }
 
   const btn = document.getElementById('btn-scan');
   const listEl = document.getElementById('findings-list');
   btn.disabled = true;
-  btn.textContent = 'Scanning...';
-  listEl.innerHTML = '<div class="loading-state">Running audit...</div>';
+  btn.textContent = t('scan') + '...';
+  listEl.innerHTML = '<div class="loading-state">' + t('runningAudit') + '</div>';
 
   try {
     const result = await apiPost('/api/scan', {
@@ -1207,17 +1421,17 @@ async function doScan() {
     renderDetail();
     renderSummary();
   } catch (err) {
-    listEl.innerHTML = `<div class="empty-state" style="color:var(--sev-critical)">Scan failed: ${esc(err.message)}</div>`;
+    listEl.innerHTML = `<div class="empty-state" style="color:var(--sev-critical)">${t('scanFailed')} ${esc(err.message)}</div>`;
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Scan';
+    btn.textContent = t('scan');
   }
 }
 
 // ── Export JSON ──────────────────────────────────────────────────────────────
 function doExport() {
   if (!state.scanResult) {
-    alert('Nothing to export. Run a scan first.');
+    alert(t('nothingToExport'));
     return;
   }
   const blob = new Blob([JSON.stringify(state.scanResult, null, 2)], { type: 'application/json' });
@@ -1255,7 +1469,7 @@ async function init() {
     renderFileTree();
   } catch (err) {
     document.getElementById('file-tree').innerHTML =
-      `<div class="empty-state" style="color:var(--sev-critical)">Failed to load files: ${esc(err.message)}</div>`;
+      `<div class="empty-state" style="color:var(--sev-critical)">${t('failedLoadFiles')} ${esc(err.message)}</div>`;
   }
 
   // Root label
@@ -1306,7 +1520,7 @@ async function init() {
       renderDetail();
       renderSummary();
     } catch (err) {
-      alert('Failed to load directory: ' + err.message);
+      alert(t('failedLoadDir') + ' ' + err.message);
     }
   });
 
@@ -1385,6 +1599,13 @@ async function init() {
   }
   setupResize('resize-left', 'file-panel', 'left');
   setupResize('resize-right', 'detail-panel', 'right');
+
+  // Set initial locale toggle state
+  document.querySelectorAll('.locale-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === state.locale);
+  });
+  // Apply locale to UI
+  renderAll();
 }
 
 init();

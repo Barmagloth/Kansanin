@@ -1,5 +1,5 @@
 # web/server.py
-# version: 0.2.0
+# version: 0.3.0
 """
 Kansanin Web Dashboard — stdlib HTTP server.
 
@@ -46,7 +46,7 @@ def _build_file_tree(root: Path) -> list[dict]:
     items: list[dict] = []
     try:
         entries = sorted(root.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
-    except PermissionError:
+    except (PermissionError, FileNotFoundError, OSError):
         return items
 
     for entry in entries:
@@ -70,26 +70,134 @@ def _build_file_tree(root: Path) -> list[dict]:
     return items
 
 
-# ── Detector metadata ────────────────────────────────────────────────────────
+# ── Detector metadata (bilingual) ────────────────────────────────────────────
 
 _DETECTOR_META = [
-    {"id": "D001", "class": "VAGUENESS",              "tier": 1, "description": "Vague/ambiguous terms in normative context"},
-    {"id": "D002", "class": "ESCAPE_CLAUSE",           "tier": 1, "description": "Escape clauses weakening requirements"},
-    {"id": "D003", "class": "UNDEFINED_ACRONYM",       "tier": 1, "description": "Acronyms used without definition"},
-    {"id": "D004", "class": "OPEN_ENDED_LIST",         "tier": 1, "description": "Open-ended lists (etc., and so on)"},
-    {"id": "D005", "class": "PLACEHOLDER",             "tier": 1, "description": "Placeholder text (TBD, TODO, TBC)"},
-    {"id": "D006", "class": "MISSING_PRIORITY",        "tier": 1, "description": "Requirements without priority markers"},
-    {"id": "D007", "class": "UNTESTABLE",              "tier": 1, "description": "Untestable/unmeasurable requirements"},
-    {"id": "D008", "class": "PASSIVE_WITHOUT_AGENT",   "tier": 1, "description": "Passive voice hiding responsibility"},
-    {"id": "D009", "class": "COMPOSITE_REQUIREMENT",   "tier": 1, "description": "Multiple requirements in one sentence"},
-    {"id": "D010", "class": "READABILITY",             "tier": 2, "description": "Readability metrics (Flesch, complexity)"},
-    {"id": "D012", "class": "AMBIGUOUS_REFERENCE",     "tier": 1, "description": "Ambiguous pronoun/demonstrative references"},
-    {"id": "D013", "class": "CONTRADICTION",           "tier": 3, "description": "Contradicting requirements"},
-    {"id": "D015", "class": "IMPLEMENTATION_BIAS",     "tier": 3, "description": "Implementation-specific details in requirements"},
-    {"id": "D016", "class": "TERMINOLOGY_INCONSISTENCY", "tier": 3, "description": "Inconsistent terminology across sections"},
-    {"id": "D017", "class": "REDUNDANCY",              "tier": 3, "description": "Redundant/duplicate requirements"},
-    {"id": "D018", "class": "ADR_ANTIPATTERN",         "tier": 1, "description": "Architecture Decision Record anti-patterns"},
+    {"id": "D001", "class": "VAGUENESS",              "tier": 1, "description": "Vague/ambiguous terms in normative context",           "description_ru": "Расплывчатые/неоднозначные термины в нормативном контексте"},
+    {"id": "D002", "class": "ESCAPE_CLAUSE",           "tier": 1, "description": "Escape clauses weakening requirements",               "description_ru": "Лазейки и оговорки, ослабляющие требования"},
+    {"id": "D003", "class": "UNDEFINED_ACRONYM",       "tier": 1, "description": "Acronyms used without definition",                    "description_ru": "Аббревиатуры без определения при первом использовании"},
+    {"id": "D004", "class": "OPEN_ENDED_LIST",         "tier": 1, "description": "Open-ended lists (etc., and so on)",                  "description_ru": "Незакрытые перечисления (и т.д., и т.п.)"},
+    {"id": "D005", "class": "PLACEHOLDER",             "tier": 1, "description": "Placeholder text (TBD, TODO, TBC)",                   "description_ru": "Незаполненные поля (TBD, TODO, TBC)"},
+    {"id": "D006", "class": "MISSING_PRIORITY",        "tier": 1, "description": "Requirements without priority markers",               "description_ru": "Требования без маркеров приоритета"},
+    {"id": "D007", "class": "UNTESTABLE",              "tier": 1, "description": "Untestable/unmeasurable requirements",                "description_ru": "Нетестируемые/неизмеримые требования"},
+    {"id": "D008", "class": "PASSIVE_WITHOUT_AGENT",   "tier": 1, "description": "Passive voice hiding responsibility",                "description_ru": "Пассивный залог без указания ответственного"},
+    {"id": "D009", "class": "COMPOSITE_REQUIREMENT",   "tier": 1, "description": "Multiple requirements in one sentence",              "description_ru": "Несколько требований в одном предложении"},
+    {"id": "D010", "class": "READABILITY",             "tier": 2, "description": "Readability metrics (Flesch, complexity)",            "description_ru": "Метрики читаемости (Flesch, сложность)"},
+    {"id": "D012", "class": "AMBIGUOUS_REFERENCE",     "tier": 1, "description": "Ambiguous pronoun/demonstrative references",          "description_ru": "Неоднозначные местоименные ссылки"},
+    {"id": "D013", "class": "CONTRADICTION",           "tier": 3, "description": "Contradicting requirements",                          "description_ru": "Противоречащие друг другу требования"},
+    {"id": "D015", "class": "IMPLEMENTATION_BIAS",     "tier": 3, "description": "Implementation-specific details in requirements",     "description_ru": "Детали реализации в нормативных требованиях"},
+    {"id": "D016", "class": "TERMINOLOGY_INCONSISTENCY", "tier": 3, "description": "Inconsistent terminology across sections",          "description_ru": "Несогласованная терминология между секциями"},
+    {"id": "D017", "class": "REDUNDANCY",              "tier": 3, "description": "Redundant/duplicate requirements",                    "description_ru": "Дублирующие/избыточные требования"},
+    {"id": "D018", "class": "ADR_ANTIPATTERN",         "tier": 1, "description": "Architecture Decision Record anti-patterns",          "description_ru": "Антипаттерны Architecture Decision Record"},
 ]
+
+
+# ── Remediation i18n ─────────────────────────────────────────────────────────
+
+_REMEDIATION_I18N: dict[str, dict[str, str]] = {
+    "D001": {
+        "en": "Replace vague/unmeasurable term with a specific, quantifiable criterion. "
+              "Example: 'fast' \u2192 'under 200 ms at p99'.",
+        "ru": "\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u0440\u0430\u0441\u043f\u043b\u044b\u0432\u0447\u0430\u0442\u044b\u0439 \u0442\u0435\u0440\u043c\u0438\u043d \u043d\u0430 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u044b\u0439 \u0438\u0437\u043c\u0435\u0440\u0438\u043c\u044b\u0439 \u043a\u0440\u0438\u0442\u0435\u0440\u0438\u0439. "
+              "\u041f\u0440\u0438\u043c\u0435\u0440: \u00ab\u0431\u044b\u0441\u0442\u0440\u043e\u00bb \u2192 \u00ab\u043c\u0435\u043d\u0435\u0435 200 \u043c\u0441 \u043d\u0430 p99\u00bb.",
+    },
+    "D002": {
+        "en": "Replace escape clause with an explicit condition and measurable trigger, "
+              "or make the requirement unconditional. "
+              "Example: 'if possible' \u2192 'when X is present, the system shall Y'.",
+        "ru": "\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u043b\u0430\u0437\u0435\u0439\u043a\u0443 \u043d\u0430 \u044f\u0432\u043d\u043e\u0435 \u0443\u0441\u043b\u043e\u0432\u0438\u0435 \u0441 \u0438\u0437\u043c\u0435\u0440\u0438\u043c\u044b\u043c \u0442\u0440\u0438\u0433\u0433\u0435\u0440\u043e\u043c \u0438\u043b\u0438 "
+              "\u0441\u0444\u043e\u0440\u043c\u0443\u043b\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0435 \u0431\u0435\u0437\u0443\u0441\u043b\u043e\u0432\u043d\u043e. "
+              "\u041f\u0440\u0438\u043c\u0435\u0440: \u00ab\u0435\u0441\u043b\u0438 \u0432\u043e\u0437\u043c\u043e\u0436\u043d\u043e\u00bb \u2192 \u00ab\u043f\u0440\u0438 \u043d\u0430\u043b\u0438\u0447\u0438\u0438 X \u0441\u0438\u0441\u0442\u0435\u043c\u0430 \u043e\u0431\u044f\u0437\u0430\u043d\u0430 Y\u00bb.",
+    },
+    "D003": {
+        "en": "Define acronym on first use: 'Full Name (ACRONYM)' or add to glossary/abbreviations section. "
+              "IEEE 830 / ISO 29148.",
+        "ru": "\u041e\u043f\u0440\u0435\u0434\u0435\u043b\u0438\u0442\u0435 \u0430\u0431\u0431\u0440\u0435\u0432\u0438\u0430\u0442\u0443\u0440\u0443 \u043f\u0440\u0438 \u043f\u0435\u0440\u0432\u043e\u043c \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u0438: "
+              "\u00ab\u041f\u043e\u043b\u043d\u043e\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 (\u0410\u0411\u0411\u0420)\u00bb \u0438\u043b\u0438 \u0434\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u0432 \u0433\u043b\u043e\u0441\u0441\u0430\u0440\u0438\u0439. "
+              "IEEE 830 / ISO 29148.",
+    },
+    "D004": {
+        "en": "Close the enumeration: list all permitted values explicitly "
+              "or define an extension procedure via CR/RFC.",
+        "ru": "\u0417\u0430\u043a\u0440\u044b\u0442\u044c \u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u0435\u043d\u0438\u0435: \u043f\u0435\u0440\u0435\u0447\u0438\u0441\u043b\u0438\u0442\u044c \u0432\u0441\u0435 \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u044b\u0435 \u0432\u0430\u0440\u0438\u0430\u043d\u0442\u044b \u044f\u0432\u043d\u043e "
+              "\u0438\u043b\u0438 \u0432\u0432\u0435\u0441\u0442\u0438 \u043f\u0440\u043e\u0446\u0435\u0434\u0443\u0440\u0443 \u0440\u0430\u0441\u0448\u0438\u0440\u0435\u043d\u0438\u044f \u0447\u0435\u0440\u0435\u0437 CR/RFC.",
+    },
+    "D005": {
+        "en": "Fill in before finalization. ISO 29148 prohibits TBD in final specs. "
+              "If unavailable \u2014 record the responsible person and deadline.",
+        "ru": "\u0417\u0430\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0434\u043e \u0444\u0438\u043d\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0438 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430. ISO 29148 \u0437\u0430\u043f\u0440\u0435\u0449\u0430\u0435\u0442 TBD \u0432 \u0444\u0438\u043d\u0430\u043b\u044c\u043d\u043e\u0439 "
+              "\u0441\u043f\u0435\u0446\u0438\u0444\u0438\u043a\u0430\u0446\u0438\u0438. \u0415\u0441\u043b\u0438 \u0438\u043d\u0444\u043e\u0440\u043c\u0430\u0446\u0438\u044f \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430 \u2014 \u0437\u0430\u0444\u0438\u043a\u0441\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0438 \u0441\u0440\u043e\u043a.",
+    },
+    "D006": {
+        "en": "Add a priority marker. IEEE 830 / ISO 29148 require explicit priority "
+              "for each requirement (Must/Shall, Should, May).",
+        "ru": "\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043c\u0430\u0440\u043a\u0435\u0440 \u043f\u0440\u0438\u043e\u0440\u0438\u0442\u0435\u0442\u0430. IEEE 830 / ISO 29148 \u0440\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u044e\u0442 \u044f\u0432\u043d\u043e \u0443\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c "
+              "\u043f\u0440\u0438\u043e\u0440\u0438\u0442\u0435\u0442 (Must/Shall, Should, May).",
+    },
+    "D007": {
+        "en": "Replace subjective language with measurable acceptance criteria. "
+              "ISO 29148: 'Each requirement shall be verifiable'.",
+        "ru": "\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u0441\u0443\u0431\u044a\u0435\u043a\u0442\u0438\u0432\u043d\u044b\u0435 \u0444\u043e\u0440\u043c\u0443\u043b\u0438\u0440\u043e\u0432\u043a\u0438 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u044b\u043c\u0438 \u043c\u0435\u0442\u0440\u0438\u043a\u0430\u043c\u0438. "
+              "ISO 29148: \u00abEach requirement shall be verifiable\u00bb.",
+    },
+    "D008": {
+        "en": "Rewrite in active voice with an explicit actor. "
+              "IEEE 830: requirements must be unambiguously assignable.",
+        "ru": "\u041f\u0435\u0440\u0435\u043f\u0438\u0441\u0430\u0442\u044c \u0432 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u043c \u0437\u0430\u043b\u043e\u0433\u0435 \u0441 \u0443\u043a\u0430\u0437\u0430\u043d\u0438\u0435\u043c \u043e\u0442\u0432\u0435\u0442\u0441\u0442\u0432\u0435\u043d\u043d\u043e\u0433\u043e \u0430\u0433\u0435\u043d\u0442\u0430. "
+              "IEEE 830: \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f \u0434\u043e\u043b\u0436\u043d\u044b \u0431\u044b\u0442\u044c \u043e\u0434\u043d\u043e\u0437\u043d\u0430\u0447\u043d\u043e \u043d\u0430\u0437\u043d\u0430\u0447\u0430\u0435\u043c\u044b\u043c\u0438.",
+    },
+    "D009": {
+        "en": "Split into separate atomic requirements. Each requirement \u2014 one modal verb, "
+              "one verifiable condition. IEEE 830.",
+        "ru": "\u0420\u0430\u0437\u0431\u0438\u0442\u044c \u043d\u0430 \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u044b\u0435 \u0430\u0442\u043e\u043c\u0430\u0440\u043d\u044b\u0435 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f. \u041a\u0430\u0436\u0434\u043e\u0435 \u2014 \u043e\u0434\u043d\u043e \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0435 "
+              "\u0441 \u043e\u0434\u043d\u0438\u043c \u043c\u043e\u0434\u0430\u043b\u044c\u043d\u044b\u043c \u0433\u043b\u0430\u0433\u043e\u043b\u043e\u043c. IEEE 830.",
+    },
+    "D010": {
+        "en": "Simplify sentence structure to improve readability score.",
+        "ru": "\u0423\u043f\u0440\u043e\u0441\u0442\u0438\u0442\u044c \u0441\u0442\u0440\u0443\u043a\u0442\u0443\u0440\u0443 \u043f\u0440\u0435\u0434\u043b\u043e\u0436\u0435\u043d\u0438\u0439 \u0434\u043b\u044f \u043f\u043e\u0432\u044b\u0448\u0435\u043d\u0438\u044f \u0447\u0438\u0442\u0430\u0435\u043c\u043e\u0441\u0442\u0438.",
+    },
+    "D012": {
+        "en": "Replace pronoun with the specific noun. "
+              "IEEE 830: avoid pronouns with multiple antecedents.",
+        "ru": "\u0417\u0430\u043c\u0435\u043d\u0438\u0442\u044c \u043c\u0435\u0441\u0442\u043e\u0438\u043c\u0435\u043d\u0438\u0435 \u043d\u0430 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u043e\u0435 \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0438\u0442\u0435\u043b\u044c\u043d\u043e\u0435. "
+              "IEEE 830: \u0438\u0437\u0431\u0435\u0433\u0430\u0442\u044c \u043c\u0435\u0441\u0442\u043e\u0438\u043c\u0435\u043d\u0438\u0439 \u0441 \u043d\u0435\u0441\u043a\u043e\u043b\u044c\u043a\u0438\u043c\u0438 \u0430\u043d\u0442\u0435\u0446\u0435\u0434\u0435\u043d\u0442\u0430\u043c\u0438.",
+    },
+    "D013": {
+        "en": "Resolve contradiction: reconcile conflicting requirements or mark one as superseding.",
+        "ru": "\u0423\u0441\u0442\u0440\u0430\u043d\u0438\u0442\u044c \u043f\u0440\u043e\u0442\u0438\u0432\u043e\u0440\u0435\u0447\u0438\u0435: \u0441\u043e\u0433\u043b\u0430\u0441\u043e\u0432\u0430\u0442\u044c \u043a\u043e\u043d\u0444\u043b\u0438\u043a\u0442\u0443\u044e\u0449\u0438\u0435 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u044f "
+              "\u0438\u043b\u0438 \u043f\u043e\u043c\u0435\u0442\u0438\u0442\u044c \u043e\u0434\u043d\u043e \u043a\u0430\u043a \u0437\u0430\u043c\u0435\u0449\u0430\u044e\u0449\u0435\u0435.",
+    },
+    "D015": {
+        "en": "Remove implementation details from normative requirements. "
+              "Specify behaviour, not technology.",
+        "ru": "\u0423\u0431\u0440\u0430\u0442\u044c \u0434\u0435\u0442\u0430\u043b\u0438 \u0440\u0435\u0430\u043b\u0438\u0437\u0430\u0446\u0438\u0438 \u0438\u0437 \u043d\u043e\u0440\u043c\u0430\u0442\u0438\u0432\u043d\u044b\u0445 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0439. "
+              "\u041e\u043f\u0438\u0441\u044b\u0432\u0430\u0442\u044c \u043f\u043e\u0432\u0435\u0434\u0435\u043d\u0438\u0435, \u0430 \u043d\u0435 \u0442\u0435\u0445\u043d\u043e\u043b\u043e\u0433\u0438\u044e.",
+    },
+    "D016": {
+        "en": "Unify terminology: use one term for one concept throughout the document.",
+        "ru": "\u0423\u043d\u0438\u0444\u0438\u0446\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0442\u0435\u0440\u043c\u0438\u043d\u043e\u043b\u043e\u0433\u0438\u044e: \u043e\u0434\u0438\u043d \u0442\u0435\u0440\u043c\u0438\u043d \u0434\u043b\u044f \u043e\u0434\u043d\u043e\u0433\u043e "
+              "\u043f\u043e\u043d\u044f\u0442\u0438\u044f \u043f\u043e \u0432\u0441\u0435\u043c\u0443 \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0443.",
+    },
+    "D017": {
+        "en": "Remove or consolidate redundant requirement.",
+        "ru": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0431\u044a\u0435\u0434\u0438\u043d\u0438\u0442\u044c \u0434\u0443\u0431\u043b\u0438\u0440\u0443\u044e\u0449\u0435\u0435 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0435.",
+    },
+    "D018": {
+        "en": "Follow ADR template: include status, context, decision, alternatives, consequences.",
+        "ru": "\u0421\u043b\u0435\u0434\u043e\u0432\u0430\u0442\u044c \u0448\u0430\u0431\u043b\u043e\u043d\u0443 ADR: \u0443\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441, \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442, \u0440\u0435\u0448\u0435\u043d\u0438\u0435, "
+              "\u0430\u043b\u044c\u0442\u0435\u0440\u043d\u0430\u0442\u0438\u0432\u044b, \u043f\u043e\u0441\u043b\u0435\u0434\u0441\u0442\u0432\u0438\u044f.",
+    },
+}
+
+
+def _enrich_remediation_i18n(findings_json: list[dict]) -> None:
+    """Add remediation_en / remediation_ru fields to each finding dict."""
+    for d in findings_json:
+        defect_id = d.get("defect_id", "")
+        i18n = _REMEDIATION_I18N.get(defect_id, {})
+        original = d.get("remediation_hint", "")
+        d["remediation_en"] = i18n.get("en", original)
+        d["remediation_ru"] = i18n.get("ru", original)
 
 
 # ── HTTP Handler ─────────────────────────────────────────────────────────────
@@ -255,9 +363,14 @@ class KansaninHandler(BaseHTTPRequestHandler):
                             "applies_to_section_roles": list(tr.entry.applies_to_section_roles),
                         },
                     })
+                findings_json = findings_to_json(findings, doc=doc)
+                _enrich_remediation_i18n(findings_json)
+                # Also enrich suppressed findings
+                for sj in suppressed_json:
+                    _enrich_remediation_i18n([sj["finding"]])
                 per_file.append({
                     "path": str(fpath),
-                    "findings": findings_to_json(findings, doc=doc),
+                    "findings": findings_json,
                     "suppressed": suppressed_json,
                     "suppressed_count": len(traces),
                     "summary": build_summary(findings, traces, fail_on, violated),
