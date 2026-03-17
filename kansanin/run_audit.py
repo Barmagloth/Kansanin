@@ -399,7 +399,10 @@ def _resolve_abs_offset(f: Finding, sent, doc) -> int | None:
 
     Because sentence text is normalized (markdown stripped, whitespace changed),
     sent.start_offset + span_offset can drift from the actual position in doc.raw.
-    We search for the evidence text near the expected position to get an accurate match.
+    We find ALL occurrences of the evidence in a window around the expected position,
+    then pick the one closest to the approximate offset.  This correctly resolves
+    multiple occurrences of the same term (e.g. "as needed" appearing twice in one
+    sentence that spans several raw lines).
     """
     if sent is None or doc is None:
         return None
@@ -412,7 +415,7 @@ def _resolve_abs_offset(f: Finding, sent, doc) -> int | None:
         evidence = evidence[:-1]
 
     span_start = f.evidence_span[0]
-    # Approximate position
+    # Approximate position in raw text
     if span_start < len(sent.text):
         approx = sent.start_offset + span_start
     else:
@@ -425,11 +428,19 @@ def _resolve_abs_offset(f: Finding, sent, doc) -> int | None:
     search_end = min(len(doc.raw), approx + window)
     chunk = doc.raw[search_start:search_end]
 
-    # Try exact evidence match first, then shorter prefix
+    # Find ALL occurrences in the window, pick the closest to approx
     for needle in (evidence, evidence[:30] if len(evidence) > 30 else evidence):
-        idx = chunk.find(needle)
-        if idx >= 0:
-            return search_start + idx
+        positions: list[int] = []
+        start = 0
+        while True:
+            idx = chunk.find(needle, start)
+            if idx < 0:
+                break
+            positions.append(search_start + idx)
+            start = idx + 1
+        if positions:
+            # Pick the occurrence whose absolute position is nearest to approx
+            return min(positions, key=lambda p: abs(p - approx))
 
     # Fallback: use approximate position
     return approx
