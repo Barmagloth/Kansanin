@@ -413,6 +413,26 @@ Suppressed findings are hidden by default but visible with `--show-suppressed`, 
 
 ---
 
+## LLM tier: when to use it
+
+Enabling the LLM pipeline (`--llm`) helps detect logical contradictions, terminology drift, redundancy, and implementation bias that heuristics alone miss. However, it introduces a **non-deterministic element** — results may vary between runs and the model can produce false positives.
+
+**Recommendation:** use the default heuristic fallback. Enable `--llm` only when you understand what it adds to your specific workflow and are prepared to review its output critically.
+
+### Contradiction detection (D013): limitations
+
+LLM-based contradiction detection works through embeddings and semantic similarity — it finds *candidate pairs* of requirements that seem to conflict. This is **not** formal verification. For guaranteed absence of logical contradictions you need model checkers like TLA+ or Alloy, which operate on formal specifications, not natural-language prose.
+
+What Kansanin's D013 actually does:
+- Finds semantically close requirement pairs with opposing sentiment/modality
+- Flags them as *potential* contradictions for human review
+- Works well for surface-level conflicts (e.g., "system shall encrypt all data" vs. "system shall store data in plaintext")
+- Does **not** catch deep logical inconsistencies that require domain reasoning
+
+Think of it as "anomaly detection in requirements", not "proof of consistency". The heuristic fallback (no LLM) catches a narrower set using keyword/pattern overlap, but is fully deterministic.
+
+---
+
 ## Non-goals
 
 Things Kansanin deliberately does not do:
@@ -420,6 +440,15 @@ Things Kansanin deliberately does not do:
 - **Prose linting.** No style rules, no grammar checks. Use Vale for that.
 - **Cross-document tracing.** Each document is audited independently. Requirement traceability matrices are a different tool.
 - **Auto-fix.** Kansanin reports defects. Fixing requirements is a human job.
+- **Formal verification.** Kansanin is a static analyzer for natural-language documents, not a model checker. For formal consistency proofs, use TLA+, Alloy, or similar tools on formalized specs.
+
+---
+
+## TODO
+
+- [ ] Additional UI languages beyond EN/RU
+- [ ] Plugins for Jira, Azure DevOps (ADO), СТАРТ
+- [ ] Improved D013 contradiction detection — explore hybrid approach with lightweight formal reasoning on extracted predicates
 
 ---
 

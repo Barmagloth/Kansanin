@@ -585,27 +585,44 @@ body {
 }
 .al-status.success { color: #16a34a; }
 .al-status.error   { color: var(--sev-critical); }
-.locale-toggle {
-  display: flex;
-  border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.locale-btn {
-  padding: 4px 10px;
+#locale-select {
+  padding: 4px 8px;
   font-size: 0.78rem;
   font-weight: 600;
-  border: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
   background: transparent;
-  color: rgba(255,255,255,0.6);
+  color: white;
   cursor: pointer;
   margin: 0;
+  width: auto;
+  min-width: 0;
+  flex-shrink: 0;
 }
-.locale-btn:hover { color: white; }
-.locale-btn.active {
-  background: rgba(255,255,255,0.2);
+#locale-select option {
+  background: #1e3a5f;
   color: white;
 }
+/* ── Confidence blocks ──────────────────────────────────── */
+.conf-blocks {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.conf-blocks .conf-num {
+  font-weight: 600;
+  font-size: 0.82rem;
+  margin-right: 2px;
+}
+.conf-block {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid #93c5fd;
+}
+.conf-block.filled { background: #3b82f6; border-color: #3b82f6; }
+.conf-block.empty  { background: transparent; }
 </style>
 </head>
 <body>
@@ -622,10 +639,10 @@ body {
   <button id="btn-scan" class="primary-btn">Scan</button>
   <button id="btn-clear">Clear</button>
   <button id="btn-export">Export JSON</button>
-  <div class="locale-toggle">
-    <button class="locale-btn active" data-lang="en" onclick="setLocale('en')">EN</button>
-    <button class="locale-btn" data-lang="ru" onclick="setLocale('ru')">RU</button>
-  </div>
+  <select id="locale-select" onchange="setLocale(this.value)">
+    <option value="en">EN</option>
+    <option value="ru">RU</option>
+  </select>
 </div>
 
 <!-- ── Main layout ───────────────────────────────────────── -->
@@ -846,9 +863,7 @@ function t(key) { return (_I18N[state.locale] || _I18N.en)[key] || key; }
 function setLocale(lang) {
   state.locale = lang;
   localStorage.setItem('kansanin-locale', lang);
-  document.querySelectorAll('.locale-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.lang === lang);
-  });
+  document.getElementById('locale-select').value = lang;
   renderAll();
 }
 
@@ -1143,6 +1158,20 @@ function renderDetail() {
   }
 }
 
+const _CONF_LEVEL = { high: 3, medium: 2, low: 1 };
+const _CONF_MAX = 3;
+
+function renderConfidence(confValue) {
+  const level = _CONF_LEVEL[(confValue || '').toLowerCase()] || 1;
+  let html = '<span class="conf-blocks">';
+  html += `<span class="conf-num">${level}</span>`;
+  for (let i = 0; i < _CONF_MAX; i++) {
+    html += `<span class="conf-block ${i < level ? 'filled' : 'empty'}"></span>`;
+  }
+  html += '</span>';
+  return html;
+}
+
 function buildDetailHTML(f) {
   let html = '';
   // Header
@@ -1156,7 +1185,7 @@ function buildDetailHTML(f) {
   html += `<dl class="detail-meta">`;
   html += `<dt>${t('section')}</dt><dd>${esc(f.section_heading || t('none'))}</dd>`;
   if (f.line) html += `<dt>${t('line')}</dt><dd>${f.line}${f.col ? ':' + f.col : ''}</dd>`;
-  html += `<dt>${t('confidence')}</dt><dd>${esc(f.confidence)}</dd>`;
+  html += `<dt>${t('confidence')}</dt><dd>${renderConfidence(f.confidence)}</dd>`;
   if (f.matched_term) html += `<dt>${t('term')}</dt><dd>${esc(f.matched_term)}</dd>`;
   if (f.term_category) html += `<dt>${t('category')}</dt><dd>${esc(f.term_category)}</dd>`;
   if (f.section_role) html += `<dt>${t('sectionRole')}</dt><dd>${esc(f.section_role)}</dd>`;
@@ -1268,11 +1297,34 @@ async function submitAllowlistEntry(f) {
 
   try {
     const res = await apiPost('/api/allowlist', body);
-    if (statusEl) {
-      statusEl.className = 'al-status success';
-      statusEl.textContent = `${t('savedTo')} ${res.file.split(/[\\/]/).pop()}. ${t('rescanHint')}`;
+    // Mark finding as suppressed locally (instant visual feedback)
+    f._is_suppressed = true;
+    f._allowlist_entry = {
+      term: f.evidence_text,
+      defect_id: f.defect_id,
+      reason: reason,
+      owner: owner || null,
+      expires: expires || null,
+      scope: 'document',
+      source_file: res.file || '',
+      applies_to_section_roles: f.section_role ? [f.section_role] : [],
+    };
+    // Move finding into suppressed list in scan result
+    if (state.scanResult) {
+      for (const fr of state.scanResult.files) {
+        const idx = fr.findings.indexOf(f);
+        if (idx !== -1) {
+          fr.findings.splice(idx, 1);
+          if (!fr.suppressed) fr.suppressed = [];
+          fr.suppressed.push({ finding: f, entry: f._allowlist_entry });
+          fr.suppressed_count = fr.suppressed.length;
+          break;
+        }
+      }
     }
-    btn.textContent = t('done');
+    renderFindings();
+    renderDetail();
+    renderSummary();
   } catch (err) {
     if (statusEl) {
       statusEl.className = 'al-status error';
@@ -1600,10 +1652,8 @@ async function init() {
   setupResize('resize-left', 'file-panel', 'left');
   setupResize('resize-right', 'detail-panel', 'right');
 
-  // Set initial locale toggle state
-  document.querySelectorAll('.locale-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.lang === state.locale);
-  });
+  // Set initial locale
+  document.getElementById('locale-select').value = state.locale;
   // Apply locale to UI
   renderAll();
 }
