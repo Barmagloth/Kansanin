@@ -12,8 +12,8 @@
   --sev-medium: #ca8a04;
   --sev-low: #2563eb;
   --sev-info: #6b7280;
-  --tree-width: 280px;
-  --detail-width: 360px;
+  --tree-width: 400px;
+  --detail-width: 700px;
   --toolbar-height: 56px;
 }
 
@@ -94,10 +94,27 @@ body {
 #file-panel {
   width: var(--tree-width);
   min-width: 200px;
+  max-width: 50vw;
   border-right: 1px solid var(--pico-muted-border-color);
   display: flex;
   flex-direction: column;
   background: var(--pico-card-background-color);
+  flex-shrink: 0;
+}
+
+/* ── Drag resize handles ────────────────────────────────── */
+.resize-handle {
+  width: 5px;
+  cursor: col-resize;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: var(--pico-primary);
+  opacity: 0.4;
 }
 #file-panel-header {
   padding: 10px 12px;
@@ -314,16 +331,13 @@ body {
 #detail-panel {
   width: var(--detail-width);
   min-width: 260px;
-  max-width: 60vw;
+  max-width: 70vw;
   border-left: 1px solid var(--pico-muted-border-color);
   overflow-y: auto;
   padding: 16px;
   background: var(--pico-card-background-color);
-  resize: horizontal;
-  overflow: auto;
-  direction: rtl;  /* resize handle on left edge */
+  flex-shrink: 0;
 }
-#detail-panel > * { direction: ltr; }
 #detail-panel.empty {
   display: flex;
   align-items: center;
@@ -495,6 +509,8 @@ body {
     </div>
   </div>
 
+  <div class="resize-handle" id="resize-left"></div>
+
   <!-- Center: Findings -->
   <div id="findings-panel">
     <div id="filter-bar">
@@ -511,6 +527,8 @@ body {
       <div class="empty-state">Select files and press Scan to start audit</div>
     </div>
   </div>
+
+  <div class="resize-handle" id="resize-right"></div>
 
   <!-- Right: Detail / Source -->
   <div id="detail-panel" class="empty">
@@ -1082,6 +1100,35 @@ async function init() {
       renderDetail();
     }
   });
+
+  // ── Drag resize handles ──────────────────────────────────
+  function setupResize(handleId, targetId, side) {
+    const handle = document.getElementById(handleId);
+    const target = document.getElementById(targetId);
+    if (!handle || !target) return;
+
+    let startX, startW;
+    function onMouseMove(e) {
+      const delta = e.clientX - startX;
+      const newW = side === 'left' ? startW + delta : startW - delta;
+      target.style.width = Math.max(150, newW) + 'px';
+    }
+    function onMouseUp() {
+      handle.classList.remove('dragging');
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    }
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      startX = e.clientX;
+      startW = target.getBoundingClientRect().width;
+      handle.classList.add('dragging');
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    });
+  }
+  setupResize('resize-left', 'file-panel', 'left');
+  setupResize('resize-right', 'detail-panel', 'right');
 }
 
 init();

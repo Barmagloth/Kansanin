@@ -327,13 +327,8 @@ def print_report(
         sent_map = {s.id: s for s in doc.all_sentences}
         for f in findings:
             sent = sent_map.get(f.sentence_id)
-            if sent is not None:
-                span_start = f.evidence_span[0]
-                if span_start < len(sent.text):
-                    abs_start = sent.start_offset + span_start
-                else:
-                    abs_start = span_start
-                abs_start = min(abs_start, len(doc.raw))
+            abs_start = _resolve_abs_offset(f, sent, doc)
+            if abs_start is not None:
                 _line_col_map[id(f)] = offset_to_linecol(doc.raw, abs_start)
 
     # active findings
@@ -377,6 +372,47 @@ def print_report(
     print(f"{'─'*62}\n")
 
 
+def _resolve_abs_offset(f: Finding, sent, doc) -> int | None:
+    """Resolve the absolute offset of a finding's evidence in the raw document.
+
+    Because sentence text is normalized (markdown stripped, whitespace changed),
+    sent.start_offset + span_offset can drift from the actual position in doc.raw.
+    We search for the evidence text near the expected position to get an accurate match.
+    """
+    if sent is None or doc is None:
+        return None
+
+    evidence = f.evidence_text.strip()
+    # For D012 findings, evidence is truncated with ellipsis — use first/last segment
+    if evidence.startswith("\u2026"):
+        evidence = evidence[1:]
+    if evidence.endswith("\u2026"):
+        evidence = evidence[:-1]
+
+    span_start = f.evidence_span[0]
+    # Approximate position
+    if span_start < len(sent.text):
+        approx = sent.start_offset + span_start
+    else:
+        approx = span_start
+    approx = min(approx, len(doc.raw))
+
+    # Search in a window around the approximate position
+    window = max(len(sent.text), 500)
+    search_start = max(0, approx - window)
+    search_end = min(len(doc.raw), approx + window)
+    chunk = doc.raw[search_start:search_end]
+
+    # Try exact evidence match first, then shorter prefix
+    for needle in (evidence, evidence[:30] if len(evidence) > 30 else evidence):
+        idx = chunk.find(needle)
+        if idx >= 0:
+            return search_start + idx
+
+    # Fallback: use approximate position
+    return approx
+
+
 def findings_to_json(findings: list[Finding], doc=None) -> list[dict]:
     from normalize.sentence_splitter import offset_to_linecol
     sent_map = {}
@@ -391,17 +427,12 @@ def findings_to_json(findings: list[Finding], doc=None) -> list[dict]:
         # line/col from absolute offset
         sent = sent_map.get(f.sentence_id)
         if sent is not None and doc is not None:
-            span_start = f.evidence_span[0]
-            # Some detectors store absolute offsets, others relative to sentence
-            if span_start < len(sent.text):
-                abs_start = sent.start_offset + span_start
-            else:
-                abs_start = span_start  # already absolute
-            abs_start = min(abs_start, len(doc.raw))
-            line, col = offset_to_linecol(doc.raw, abs_start)
-            d["line"] = line
-            d["col"] = col
-            d["abs_offset"] = abs_start
+            abs_start = _resolve_abs_offset(f, sent, doc)
+            if abs_start is not None:
+                line, col = offset_to_linecol(doc.raw, abs_start)
+                d["line"] = line
+                d["col"] = col
+                d["abs_offset"] = abs_start
         result.append(d)
     return result
 
