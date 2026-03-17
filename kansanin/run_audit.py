@@ -268,6 +268,7 @@ def print_report(
     allowlist: Allowlist | None = None,
     fail_on: str = _DEFAULT_FAIL_ON,
     policy_violated: bool = False,
+    doc=None,
 ) -> None:
     print(f"\n{'─'*62}")
     try:
@@ -319,6 +320,22 @@ def print_report(
 
     print()
 
+    # Build line/col lookup if doc is available
+    _line_col_map: dict[str, tuple[int, int]] = {}
+    if doc is not None:
+        from normalize.sentence_splitter import offset_to_linecol
+        sent_map = {s.id: s for s in doc.all_sentences}
+        for f in findings:
+            sent = sent_map.get(f.sentence_id)
+            if sent is not None:
+                span_start = f.evidence_span[0]
+                if span_start < len(sent.text):
+                    abs_start = sent.start_offset + span_start
+                else:
+                    abs_start = span_start
+                abs_start = min(abs_start, len(doc.raw))
+                _line_col_map[id(f)] = offset_to_linecol(doc.raw, abs_start)
+
     # active findings
     by_section: dict[str, list[Finding]] = {}
     for f in findings:
@@ -328,7 +345,11 @@ def print_report(
         print(f"  ── {heading}")
         for f in sec_findings:
             icon = _SEV_ICON.get(f.severity.value, "?")
-            meta = f"conf:{f.confidence.value}"
+            loc = ""
+            lc = _line_col_map.get(id(f))
+            if lc:
+                loc = f"  L{lc[0]}:{lc[1]}"
+            meta = f"conf:{f.confidence.value}{loc}"
             if f.section_role:
                 meta += f"  role:{f.section_role}"
             if f.term_category:
@@ -498,6 +519,21 @@ def main() -> None:
     if not args.files:
         parser.error("the following arguments are required: FILE (or use --serve)")
 
+    # Windows glob expansion (CMD/PowerShell don't expand wildcards)
+    import glob as _glob
+    expanded_files: list[Path] = []
+    for fp in args.files:
+        fp_str = str(fp)
+        if '*' in fp_str or '?' in fp_str:
+            matches = sorted(_glob.glob(fp_str, recursive=True))
+            if not matches:
+                print(f"error: no files match pattern: {fp_str}", file=sys.stderr)
+                sys.exit(EXIT_ERROR)
+            expanded_files.extend(Path(m) for m in matches)
+        else:
+            expanded_files.append(fp)
+    args.files = expanded_files
+
     # validate --fail-on
     fail_on = args.fail_on.lower()
     if fail_on not in _VALID_FAIL_ON:
@@ -543,7 +579,7 @@ def main() -> None:
         if not args.json:
             print_report(findings, fpath, traces,
                          show_suppressed=args.show_suppressed, allowlist=al,
-                         fail_on=fail_on, policy_violated=violated)
+                         fail_on=fail_on, policy_violated=violated, doc=doc)
 
         per_file.append({
             "file": str(fpath),

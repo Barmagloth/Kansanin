@@ -12,7 +12,6 @@ Endpoints:
 from __future__ import annotations
 
 import json
-import os
 import sys
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -26,7 +25,7 @@ from run_audit import (
     run_with_traces,
     findings_to_json,
     build_summary,
-    _ALL_DETECTORS,
+    _severity_at_or_above,
     _count_by_severity,
     _count_by_class,
     _DEFAULT_FAIL_ON,
@@ -105,7 +104,6 @@ class KansaninHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(body)
 
@@ -184,14 +182,6 @@ class KansaninHandler(BaseHTTPRequestHandler):
         else:
             self.send_error(404, "Not found")
 
-    def do_OPTIONS(self):
-        """Handle CORS preflight."""
-        self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.end_headers()
-
     def _handle_scan(self) -> None:
         # Read request body
         content_length = int(self.headers.get("Content-Length", 0))
@@ -220,8 +210,15 @@ class KansaninHandler(BaseHTTPRequestHandler):
         total_suppressed = 0
         errors: list[dict] = []
 
+        root = self.root_dir.resolve()
+        blocking = _severity_at_or_above(fail_on)
+
         for file_path_str in paths:
             fpath = Path(file_path_str)
+            # Path boundary check
+            if not fpath.resolve().is_relative_to(root):
+                errors.append({"path": file_path_str, "error": "Path outside root directory"})
+                continue
             if not fpath.exists():
                 errors.append({"path": file_path_str, "error": "File not found"})
                 continue
@@ -234,7 +231,7 @@ class KansaninHandler(BaseHTTPRequestHandler):
                     use_llm=use_llm,
                 )
                 violated = any(
-                    f.severity.value in ("critical", "high")
+                    f.severity.value in blocking
                     for f in findings
                 )
                 per_file.append({

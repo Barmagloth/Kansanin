@@ -245,7 +245,7 @@ body {
 
 .finding-row {
   display: grid;
-  grid-template-columns: 28px 52px 44px 140px 1fr;
+  grid-template-columns: 28px 52px min-content minmax(100px, auto) 1fr;
   gap: 8px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--pico-muted-border-color);
@@ -314,11 +314,16 @@ body {
 #detail-panel {
   width: var(--detail-width);
   min-width: 260px;
+  max-width: 60vw;
   border-left: 1px solid var(--pico-muted-border-color);
   overflow-y: auto;
   padding: 16px;
   background: var(--pico-card-background-color);
+  resize: horizontal;
+  overflow: auto;
+  direction: rtl;  /* resize handle on left edge */
 }
+#detail-panel > * { direction: ltr; }
 #detail-panel.empty {
   display: flex;
   align-items: center;
@@ -407,9 +412,7 @@ body {
 .detail-tab:hover { color: var(--pico-color); }
 
 /* ── Source viewer ──────────────────────────────────────── */
-#source-content { display: none; }
-#source-content.active { display: block; }
-#detail-content.active { display: block; }
+/* source/detail toggled via inline style.display in JS */
 
 .source-viewer {
   font-family: monospace;
@@ -472,6 +475,7 @@ body {
     <label><input type="checkbox" id="toggle-llm"> LLM</label>
   </div>
   <button id="btn-scan" class="primary-btn">Scan</button>
+  <button id="btn-clear">Clear</button>
   <button id="btn-export">Export JSON</button>
 </div>
 
@@ -481,7 +485,8 @@ body {
   <!-- Left: File tree -->
   <div id="file-panel">
     <div id="file-panel-header">
-      <h3>Files</h3>
+      <h3 id="root-label" title="">Files</h3>
+      <button id="btn-change-root" title="Change root directory">&#x1F4C2;</button>
       <button id="btn-select-all" title="Select all files">All</button>
       <button id="btn-select-none" title="Deselect all">None</button>
     </div>
@@ -503,7 +508,7 @@ body {
       <input type="text" id="search-input" placeholder="Search findings...">
     </div>
     <div id="findings-list">
-      <div class="empty-state">Select files and press  <strong> Scan </strong>  to start audit</div>
+      <div class="empty-state">Select files and press Scan to start audit</div>
     </div>
   </div>
 
@@ -658,7 +663,7 @@ function renderFindings() {
   const groups = getFilteredFindings();
 
   if (!state.scanResult) {
-    el.innerHTML = '<div class="empty-state">Select files and press  <strong> Scan </strong>  to start audit</div>';
+    el.innerHTML = '<div class="empty-state">Select files and press Scan to start audit</div>';
     return;
   }
 
@@ -676,8 +681,9 @@ function renderFindings() {
     html += `<div class="file-group-body" data-group-body="${esc(group.path)}">`;
     for (let i = 0; i < group.findings.length; i++) {
       const f = group.findings[i];
-      const fid = `${group.path}::${i}`;
-      const sel = (state.selectedFinding && state.selectedFinding._id === fid) ? ' selected' : '';
+      // Stable ID: defect_id + sentence_id + span (survives filter changes)
+      const fid = `${group.path}::${f.defect_id}::${f.sentence_id}::${f.evidence_span}`;
+      const sel = (state.selectedFinding && state.selectedFinding._stableId === fid) ? ' selected' : '';
       const lineLabel = f.line ? `L${f.line}` : '';
       html += `<div class="finding-row${sel}" data-fid="${esc(fid)}" data-file="${esc(group.path)}" data-idx="${i}">`;
       html += `<span class="sev-dot ${f.severity}"></span>`;
@@ -699,7 +705,8 @@ function renderFindings() {
       const group = groups.find(g => g.path === filePath);
       if (group) {
         const finding = group.findings[idx];
-        finding._id = row.dataset.fid;
+        finding._stableId = row.dataset.fid;
+        finding._file_path = group.path;  // attach group-level path as fallback
         state.selectedFinding = finding;
         renderFindings();
         renderDetail();
@@ -814,16 +821,20 @@ async function loadAndRenderSource(f) {
   const container = document.getElementById('source-content');
   if (!container) return;
 
-  // Find the file path for this finding
-  const filePath = f.document_path;
+  // Find the file path for this finding (try document_path, then group-level _file_path)
+  const filePath = f.document_path || f._file_path;
   if (!filePath) {
     container.innerHTML = '<div class="empty-state">No source path available</div>';
     return;
   }
 
-  const text = await fetchSource(filePath);
+  let text = await fetchSource(filePath);
+  // Fallback: try _file_path if document_path failed
+  if (text === null && f._file_path && f._file_path !== filePath) {
+    text = await fetchSource(f._file_path);
+  }
   if (text === null) {
-    container.innerHTML = '<div class="empty-state">Could not load source file</div>';
+    container.innerHTML = `<div class="empty-state">Could not load source file:<br><code>${esc(filePath)}</code></div>`;
     return;
   }
 
@@ -843,7 +854,9 @@ async function loadAndRenderSource(f) {
   const evStart = absOffset != null ? absOffset : -1;
   const evEnd = evStart >= 0 ? evStart + evidenceLen : -1;
 
-  let html = '<div class="source-viewer"><table>';
+  const fname = filePath.split(/[\\/]/).pop();
+  let html = `<div style="font-size:0.75rem;color:var(--pico-muted-color);margin-bottom:4px;word-break:break-all" title="${esc(filePath)}">${esc(fname)}</div>`;
+  html += '<div class="source-viewer"><table>';
   for (let i = 0; i < lines.length; i++) {
     const lineStart = lineOffsets[i];
     const lineEnd = lineStart + lines[i].length;
@@ -918,6 +931,11 @@ async function doScan() {
     for (const fr of result.files) {
       state.findingCounts[fr.path] = fr.findings.length;
     }
+    // Show scan errors if any
+    if (result.errors && result.errors.length > 0) {
+      const errMsgs = result.errors.map(e => `${e.path}: ${e.error}`).join('\n');
+      console.warn('Scan errors:', errMsgs);
+    }
     renderFileTree();
     renderFindings();
     renderDetail();
@@ -974,11 +992,55 @@ async function init() {
       `<div class="empty-state" style="color:var(--sev-critical)">Failed to load files: ${esc(err.message)}</div>`;
   }
 
+  // Root label
+  document.getElementById('root-label').title = state.rootDir;
+
   // Scan button
   document.getElementById('btn-scan').addEventListener('click', doScan);
 
+  // Clear button
+  document.getElementById('btn-clear').addEventListener('click', () => {
+    state.scanResult = null;
+    state.selectedFinding = null;
+    state.findingCounts = {};
+    state.sourceTexts = {};
+    state.searchQuery = '';
+    document.getElementById('search-input').value = '';
+    state.activeSeverities = new Set(['critical', 'high', 'medium', 'low', 'info']);
+    document.querySelectorAll('.sev-chip').forEach(c => c.classList.add('active'));
+    renderFileTree();
+    renderFindings();
+    renderDetail();
+    renderSummary();
+  });
+
   // Export button
   document.getElementById('btn-export').addEventListener('click', doExport);
+
+  // Change root directory
+  document.getElementById('btn-change-root').addEventListener('click', async () => {
+    const newRoot = prompt('Enter root directory path:', state.rootDir);
+    if (!newRoot || newRoot === state.rootDir) return;
+    try {
+      const data = await apiGet('/api/files?root=' + encodeURIComponent(newRoot));
+      state.fileTree = data.tree;
+      state.rootDir = data.root;
+      state.selectedFiles.clear();
+      state.scanResult = null;
+      state.selectedFinding = null;
+      state.findingCounts = {};
+      state.sourceTexts = {};
+      const allFiles = collectAllFiles(state.fileTree);
+      allFiles.forEach(f => state.selectedFiles.add(f));
+      document.getElementById('root-label').title = state.rootDir;
+      renderFileTree();
+      renderFindings();
+      renderDetail();
+      renderSummary();
+    } catch (err) {
+      alert('Failed to load directory: ' + err.message);
+    }
+  });
 
   // Select all / none
   document.getElementById('btn-select-all').addEventListener('click', () => {
