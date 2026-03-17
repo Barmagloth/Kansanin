@@ -475,6 +475,116 @@ body {
   color: var(--pico-muted-color);
   text-align: right;
 }
+
+/* ── Suppressed findings ──────────────────────────────── */
+.finding-row.suppressed {
+  opacity: 0.55;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(0,0,0,0.015) 8px,
+    rgba(0,0,0,0.015) 16px
+  );
+}
+.finding-row.suppressed .finding-snippet {
+  text-decoration: line-through;
+}
+.finding-row.suppressed:hover { opacity: 0.75; }
+.finding-row.suppressed.selected { opacity: 0.85; }
+
+.suppressed-badge {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: #e5e7eb;
+  color: #6b7280;
+  letter-spacing: 0.3px;
+}
+
+/* ── Allowlist form ───────────────────────────────────── */
+.allowlist-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid var(--pico-muted-border-color);
+}
+.allowlist-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.scope-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.scope-badge.document { background: #dbeafe; color: #1d4ed8; }
+.scope-badge.project  { background: #fef3c7; color: #92400e; }
+.scope-badge.global   { background: #fce7f3; color: #9d174d; }
+
+.al-form-group {
+  margin-bottom: 10px;
+}
+.al-form-group label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--pico-muted-color);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.al-form-group input,
+.al-form-group textarea {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 4px;
+  font-family: inherit;
+  margin: 0;
+}
+.al-form-group textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+.al-form-group input[readonly],
+.al-form-group textarea[readonly] {
+  background: var(--pico-muted-border-color);
+  opacity: 0.8;
+  cursor: default;
+}
+.al-submit-btn {
+  padding: 6px 16px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background: var(--pico-primary);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.al-submit-btn:hover { opacity: 0.9; }
+.al-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.al-status {
+  font-size: 0.78rem;
+  margin-top: 6px;
+}
+.al-status.success { color: #16a34a; }
+.al-status.error   { color: var(--sev-critical); }
 </style>
 </head>
 <body>
@@ -522,6 +632,9 @@ body {
         <span class="sev-chip active" data-sev="info">&#x26AA; Info</span>
       </div>
       <input type="text" id="search-input" placeholder="Search findings...">
+      <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;cursor:pointer;white-space:nowrap;margin:0">
+        <input type="checkbox" id="toggle-suppressed" style="margin:0;width:14px;height:14px"> Suppressed
+      </label>
     </div>
     <div id="findings-list">
       <div class="empty-state">Select files and press Scan to start audit</div>
@@ -550,6 +663,7 @@ const state = {
   findingCounts: {},  // path → count
   sourceTexts: {},    // path → raw text (cache)
   activeDetailTab: 'detail',
+  showSuppressed: false,
 };
 
 // ── API helpers ──────────────────────────────────────────────────────────────
@@ -660,6 +774,7 @@ function getFilteredFindings() {
   if (!state.scanResult) return [];
   const results = [];
   for (const fileResult of state.scanResult.files) {
+    // Active findings
     const filtered = fileResult.findings.filter(f => {
       if (!state.activeSeverities.has(f.severity)) return false;
       if (state.searchQuery) {
@@ -669,8 +784,29 @@ function getFilteredFindings() {
       }
       return true;
     });
-    if (filtered.length > 0) {
-      results.push({ path: fileResult.path, findings: filtered });
+
+    // Suppressed findings (when toggle is on)
+    let suppressedFiltered = [];
+    if (state.showSuppressed && fileResult.suppressed) {
+      suppressedFiltered = fileResult.suppressed.filter(s => {
+        const f = s.finding;
+        if (!state.activeSeverities.has(f.severity)) return false;
+        if (state.searchQuery) {
+          const q = state.searchQuery.toLowerCase();
+          const searchable = `${f.defect_id} ${f.defect_class} ${f.evidence_text} ${f.message} ${f.section_heading}`.toLowerCase();
+          if (!searchable.includes(q)) return false;
+        }
+        return true;
+      }).map(s => {
+        // Attach suppression metadata to the finding for rendering
+        const f = { ...s.finding, _is_suppressed: true, _allowlist_entry: s.entry };
+        return f;
+      });
+    }
+
+    const all = [...filtered, ...suppressedFiltered];
+    if (all.length > 0) {
+      results.push({ path: fileResult.path, findings: all });
     }
   }
   return results;
@@ -702,9 +838,14 @@ function renderFindings() {
       // Stable ID: defect_id + sentence_id + span (survives filter changes)
       const fid = `${group.path}::${f.defect_id}::${f.sentence_id}::${f.evidence_span}`;
       const sel = (state.selectedFinding && state.selectedFinding._stableId === fid) ? ' selected' : '';
+      const suppCls = f._is_suppressed ? ' suppressed' : '';
       const lineLabel = f.line ? `L${f.line}` : '';
-      html += `<div class="finding-row${sel}" data-fid="${esc(fid)}" data-file="${esc(group.path)}" data-idx="${i}">`;
-      html += `<span class="sev-dot ${f.severity}"></span>`;
+      html += `<div class="finding-row${sel}${suppCls}" data-fid="${esc(fid)}" data-file="${esc(group.path)}" data-idx="${i}">`;
+      if (f._is_suppressed) {
+        html += `<span class="suppressed-badge">SUP</span>`;
+      } else {
+        html += `<span class="sev-dot ${f.severity}"></span>`;
+      }
       html += `<span class="finding-id">${esc(f.defect_id)}</span>`;
       html += `<span class="line-badge">${esc(lineLabel)}</span>`;
       html += `<span class="finding-class">${esc(f.defect_class)}</span>`;
@@ -784,6 +925,12 @@ function renderDetail() {
 
   // If source tab is already active, load source
   if (!detailActive) loadAndRenderSource(f);
+
+  // Allowlist submit handler
+  const alBtn = document.getElementById('al-submit');
+  if (alBtn) {
+    alBtn.addEventListener('click', () => submitAllowlistEntry(f));
+  }
 }
 
 function buildDetailHTML(f) {
@@ -820,7 +967,107 @@ function buildDetailHTML(f) {
     html += `<div class="detail-section"><h4>Remediation</h4>`;
     html += `<div class="remediation-box">${esc(f.remediation_hint)}</div></div>`;
   }
+
+  // Allowlist section
+  html += buildAllowlistHTML(f);
+
   return html;
+}
+
+function buildAllowlistHTML(f) {
+  let html = '<div class="allowlist-section">';
+
+  if (f._is_suppressed && f._allowlist_entry) {
+    // ── Already suppressed: show read-only entry ──
+    const e = f._allowlist_entry;
+    html += `<h4>&#x2705; Allowlisted <span class="scope-badge ${esc(e.scope)}">${esc(e.scope)}</span></h4>`;
+    html += `<div class="al-form-group"><label>Term</label>`;
+    html += `<input type="text" readonly value="${esc(e.term)}"></div>`;
+    html += `<div class="al-form-group"><label>Defect ID</label>`;
+    html += `<input type="text" readonly value="${esc(e.defect_id)}"></div>`;
+    html += `<div class="al-form-group"><label>Reason</label>`;
+    html += `<textarea readonly>${esc(e.reason)}</textarea></div>`;
+    if (e.owner) {
+      html += `<div class="al-form-group"><label>Owner</label>`;
+      html += `<input type="text" readonly value="${esc(e.owner)}"></div>`;
+    }
+    if (e.expires) {
+      html += `<div class="al-form-group"><label>Expires</label>`;
+      html += `<input type="text" readonly value="${esc(e.expires)}"></div>`;
+    }
+    if (e.applies_to_section_roles && e.applies_to_section_roles.length > 0) {
+      html += `<div class="al-form-group"><label>Section roles</label>`;
+      html += `<input type="text" readonly value="${esc(e.applies_to_section_roles.join(', '))}"></div>`;
+    }
+    html += `<div style="font-size:0.72rem;color:var(--pico-muted-color);margin-top:6px">Source: ${esc(e.source_file)}</div>`;
+  } else {
+    // ── Not suppressed: show editable form ──
+    html += `<h4>&#x1F6E1; Add to Allowlist</h4>`;
+    html += `<div class="al-form-group"><label>Term</label>`;
+    html += `<input type="text" readonly value="${esc(f.evidence_text)}"></div>`;
+    html += `<div class="al-form-group"><label>Defect ID</label>`;
+    html += `<input type="text" readonly value="${esc(f.defect_id)}"></div>`;
+    html += `<div class="al-form-group"><label>Reason <span style="color:var(--sev-critical)">*</span></label>`;
+    html += `<textarea id="al-reason" placeholder="Why is this finding acceptable?"></textarea></div>`;
+    html += `<div class="al-form-group"><label>Owner</label>`;
+    html += `<input type="text" id="al-owner" placeholder="Who made this decision?"></div>`;
+    html += `<div class="al-form-group"><label>Expires</label>`;
+    html += `<input type="date" id="al-expires"></div>`;
+    html += `<button class="al-submit-btn" id="al-submit">Add to Allowlist</button>`;
+    html += `<div class="al-status" id="al-status"></div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ── Allowlist submit ──────────────────────────────────────────────────────────
+async function submitAllowlistEntry(f) {
+  const reason = (document.getElementById('al-reason')?.value || '').trim();
+  const owner = (document.getElementById('al-owner')?.value || '').trim();
+  const expires = (document.getElementById('al-expires')?.value || '').trim();
+  const statusEl = document.getElementById('al-status');
+  const btn = document.getElementById('al-submit');
+
+  if (!reason) {
+    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = 'Reason is required.'; }
+    return;
+  }
+
+  const docPath = f.document_path || f._file_path;
+  if (!docPath) {
+    if (statusEl) { statusEl.className = 'al-status error'; statusEl.textContent = 'No document path available.'; }
+    return;
+  }
+
+  const body = {
+    doc_path: docPath,
+    term: f.evidence_text,
+    defect_id: f.defect_id,
+    reason: reason,
+  };
+  if (owner) body.owner = owner;
+  if (expires) body.expires = expires;
+  if (f.section_role) body.section_roles = [f.section_role];
+
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  try {
+    const res = await apiPost('/api/allowlist', body);
+    if (statusEl) {
+      statusEl.className = 'al-status success';
+      statusEl.textContent = `Saved to ${res.file.split(/[\\/]/).pop()}. Re-scan to see changes.`;
+    }
+    btn.textContent = 'Done';
+  } catch (err) {
+    if (statusEl) {
+      statusEl.className = 'al-status error';
+      statusEl.textContent = err.message;
+    }
+    btn.disabled = false;
+    btn.textContent = 'Add to Allowlist';
+  }
 }
 
 // ── Source viewer ─────────────────────────────────────────────────────────────
@@ -918,7 +1165,8 @@ function renderSummary() {
   for (const [sev, count] of Object.entries(t.by_severity || {})) {
     if (count > 0) parts.push(`${count} ${sev}`);
   }
-  el.textContent = `${t.total_findings} findings (${parts.join(', ')}) across ${t.files} files`;
+  const suppInfo = t.suppressed > 0 ? ` · ${t.suppressed} suppressed` : '';
+  el.textContent = `${t.total_findings} findings (${parts.join(', ')}) across ${t.files} files${suppInfo}`;
 }
 
 // ── Scan ─────────────────────────────────────────────────────────────────────
@@ -1023,7 +1271,9 @@ async function init() {
     state.findingCounts = {};
     state.sourceTexts = {};
     state.searchQuery = '';
+    state.showSuppressed = false;
     document.getElementById('search-input').value = '';
+    document.getElementById('toggle-suppressed').checked = false;
     state.activeSeverities = new Set(['critical', 'high', 'medium', 'low', 'info']);
     document.querySelectorAll('.sev-chip').forEach(c => c.classList.add('active'));
     renderFileTree();
@@ -1089,6 +1339,12 @@ async function init() {
   // Search
   document.getElementById('search-input').addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
+    renderFindings();
+  });
+
+  // Suppressed toggle
+  document.getElementById('toggle-suppressed').addEventListener('change', (e) => {
+    state.showSuppressed = e.target.checked;
     renderFindings();
   });
 

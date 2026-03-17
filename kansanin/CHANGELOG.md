@@ -5,6 +5,46 @@
 
 ---
 
+## [0.18.0] — 2026-03-17
+
+### Added — Web Dashboard + Line/Col Tracking
+
+- **`web/`** package: stdlib HTTP server + SPA frontend for interactive document audit.
+  - `web/server.py`: 5 endpoints — `/api/scan`, `/api/source`, `/api/files`, static serve. Path traversal guards on all path-accepting endpoints.
+  - `web/static/index.html`: SPA dashboard (vanilla JS + Pico CSS). File tree, findings table with severity filters, search, Detail/Source tabs. Resizable panels with drag handles.
+  - Root directory chooser (folder icon prompt), Clear button, stable finding selection ID across filter changes.
+- **`__main__.py`**: `python -m kansanin` support (was missing from git).
+- **Line/col tracking** in findings:
+  - `normalize/sentence_splitter.py`: `offset_to_linecol()` — absolute char offset → 1-based line:col.
+  - `run_audit.py`: `_resolve_abs_offset()` — evidence search in raw text window for accurate positions (fixes normalization-induced offset mismatch).
+  - `findings_to_json()` includes `line`, `col`, `abs_offset` fields.
+- **`GET /api/source`** endpoint: returns raw document text with path traversal guard (HTTP 403).
+- **CLI**: `--serve` / `--port` flags to launch web dashboard.
+
+### Changed
+
+- `run_audit.py` v0.18.0:
+  - Human-readable output now shows `L{line}:{col}` position for each finding.
+  - Windows glob expansion (`*.md` patterns via `glob.glob`).
+  - `run_with_traces()` returns Document alongside findings.
+- `.gitignore`: updated for `kansanin/` paths (was `doc_auditor/`), added `*.egg-info`.
+
+### Fixed
+
+- Offset resolution: replaced arithmetic offset (sent.start_offset + span) with evidence search in `doc.raw` — fixes 79% mismatch from sentence normalization stripping markdown.
+- Web UI: `/api/scan` validates paths within `root_dir` (path traversal fix).
+- Web UI: `fail_on` severity filter used `_severity_at_or_above()` instead of hardcoded critical+high.
+- Removed CORS `Access-Control-Allow-Origin: *` (localhost-only server).
+- Fixed "pressScanto" spacing in empty state message.
+
+### Verified
+
+- Corpus 17 docs: 162/164 findings get accurate line numbers, 0 bogus columns.
+- CLI text + JSON both work. `/api/source` blocks path traversal (HTTP 403).
+- `python -m kansanin` and `pip install .` → `kansanin` both functional.
+
+---
+
 ## [0.17.0] — 2026-03-16
 
 ### Added — Phase 3: D013, D015, D017 Tier 3 LLM detectors

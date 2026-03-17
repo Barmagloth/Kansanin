@@ -1,5 +1,5 @@
 # web/server.py
-# version: 0.1.0
+# version: 0.2.0
 """
 Kansanin Web Dashboard — stdlib HTTP server.
 
@@ -8,6 +8,8 @@ Endpoints:
   GET  /api/files?root=PATH  → file tree (recursive, .md/.txt/.rst)
   POST /api/scan             → run audit on selected files → JSON
   GET  /api/detectors        → list all detectors with metadata
+  GET  /api/source?path=FILE → raw document text
+  POST /api/allowlist        → add entry to per-document allowlist YAML
 """
 from __future__ import annotations
 
@@ -17,6 +19,8 @@ import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
+
+import yaml
 
 # Ensure kansanin is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -179,6 +183,8 @@ class KansaninHandler(BaseHTTPRequestHandler):
 
         if path == "/api/scan":
             self._handle_scan()
+        elif path == "/api/allowlist":
+            self._handle_allowlist_add()
         else:
             self.send_error(404, "Not found")
 
@@ -234,9 +240,25 @@ class KansaninHandler(BaseHTTPRequestHandler):
                     f.severity.value in blocking
                     for f in findings
                 )
+                suppressed_json = []
+                for tr in traces:
+                    suppressed_json.append({
+                        "finding": findings_to_json([tr.finding], doc=doc)[0],
+                        "entry": {
+                            "term": tr.entry.term,
+                            "defect_id": tr.entry.defect_id,
+                            "reason": tr.entry.reason,
+                            "owner": tr.entry.owner,
+                            "expires": tr.entry.expires,
+                            "scope": tr.entry.scope,
+                            "source_file": tr.entry.source_file,
+                            "applies_to_section_roles": list(tr.entry.applies_to_section_roles),
+                        },
+                    })
                 per_file.append({
                     "path": str(fpath),
                     "findings": findings_to_json(findings, doc=doc),
+                    "suppressed": suppressed_json,
                     "suppressed_count": len(traces),
                     "summary": build_summary(findings, traces, fail_on, violated),
                 })
@@ -258,6 +280,105 @@ class KansaninHandler(BaseHTTPRequestHandler):
         if errors:
             result["errors"] = errors
         self._send_json(result)
+
+
+    def _handle_allowlist_add(self) -> None:
+        """POST /api/allowlist — add entry to per-document allowlist YAML."""
+        content_length = int(self.headers.get("Content-Length", 0))
+        if content_length == 0:
+            self._send_error_json(400, "Empty request body")
+            return
+
+        try:
+            body = json.loads(self.rfile.read(content_length).decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            self._send_error_json(400, f"Invalid JSON: {exc}")
+            return
+
+        doc_path_str = body.get("doc_path", "").strip()
+        term = body.get("term", "").strip()
+        defect_id = body.get("defect_id", "").strip()
+        reason = body.get("reason", "").strip()
+        owner = body.get("owner", "").strip() or None
+        expires = body.get("expires", "").strip() or None
+        section_roles = body.get("section_roles", [])
+
+        # Validate required fields
+        if not doc_path_str:
+            self._send_error_json(400, "Missing 'doc_path'")
+            return
+        if not term:
+            self._send_error_json(400, "Missing 'term'")
+            return
+        if not defect_id:
+            self._send_error_json(400, "Missing 'defect_id'")
+            return
+        if not reason:
+            self._send_error_json(400, "Missing 'reason'")
+            return
+
+        # Path traversal guard
+        doc_path = Path(doc_path_str).resolve()
+        root = self.root_dir.resolve()
+        if not doc_path.is_relative_to(root):
+            self._send_error_json(403, "Path outside root directory")
+            return
+
+        # Build allowlist YAML path
+        al_path = doc_path.parent / f"{doc_path.name}.allowlist.yaml"
+
+        # Load existing or create new
+        if al_path.exists():
+            try:
+                with open(al_path, encoding="utf-8") as f:
+                    data = yaml.safe_load(f) or {}
+            except Exception as exc:
+                self._send_error_json(500, f"Cannot read allowlist: {exc}")
+                return
+        else:
+            data = {
+                # header comment is lost by yaml.dump, add as a convention
+            }
+
+        if "terms" not in data or not isinstance(data.get("terms"), list):
+            data["terms"] = []
+
+        # Build new entry
+        new_entry: dict = {
+            "term": term,
+            "defect_id": defect_id,
+            "reason": reason,
+        }
+        if owner:
+            new_entry["owner"] = owner
+        if expires:
+            new_entry["expires"] = expires
+        if section_roles:
+            new_entry["applies_to_section_roles"] = section_roles
+
+        # Check for duplicate (same term + defect_id)
+        for existing in data["terms"]:
+            if (isinstance(existing, dict)
+                    and existing.get("term", "").strip().lower() == term.lower()
+                    and existing.get("defect_id", "").strip() == defect_id):
+                self._send_error_json(409, f"Entry already exists: {defect_id} / {term}")
+                return
+
+        data["terms"].append(new_entry)
+
+        # Write YAML
+        try:
+            header = (
+                f"# Per-document allowlist for {doc_path.name}\n"
+                f"# Scope: document only\n\n"
+            )
+            yaml_body = yaml.dump(data, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            al_path.write_text(header + yaml_body, encoding="utf-8")
+        except Exception as exc:
+            self._send_error_json(500, f"Cannot write allowlist: {exc}")
+            return
+
+        self._send_json({"ok": True, "file": str(al_path)})
 
 
 # ── Server launcher ──────────────────────────────────────────────────────────
