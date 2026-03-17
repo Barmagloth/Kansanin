@@ -103,13 +103,13 @@ The threshold is configurable:
 
 ```bash
 # Default: fail on HIGH + CRITICAL
-python kansanin/run_audit.py spec.md
+python -m kansanin spec.md
 
 # Strict: fail on MEDIUM and above
-python kansanin/run_audit.py spec.md --fail-on medium
+python -m kansanin spec.md --fail-on medium
 
 # Lenient: fail only on CRITICAL
-python kansanin/run_audit.py spec.md --fail-on critical
+python -m kansanin spec.md --fail-on critical
 ```
 
 ### CLI output (policy failed)
@@ -149,41 +149,17 @@ python kansanin/run_audit.py spec.md --fail-on critical
 
 ## Installation
 
-### Requirements
-
-- Python 3.11+
-- No external dependencies for core analysis (Tier 1)
-
-### From source (recommended)
+Python 3.11+. Core engine (Tier 1) has zero dependencies.
 
 ```bash
 git clone https://github.com/Barmagloth/Kansanin.git
 cd Kansanin
+pip install -e .          # optional — registers `python -m kansanin` entry point
 ```
 
-That's it. The core engine runs on stdlib only — no `pip install` required.
+Without `pip install`, run directly: `python kansanin/run_audit.py spec.md`.
 
-### As a package (editable install)
-
-```bash
-git clone https://github.com/Barmagloth/Kansanin.git
-cd Kansanin
-pip install -e .
-```
-
-After installation the `kansanin` command is available globally:
-
-```bash
-kansanin spec.md
-kansanin docs/*.md --fail-on high --json
-kansanin --serve
-```
-
-Or install directly from GitHub without cloning:
-
-```bash
-pip install git+https://github.com/Barmagloth/Kansanin.git
-```
+> **Note (Windows):** if `pip install` warns that Scripts is not on PATH, use `python -m kansanin` instead.
 
 ### Optional tiers
 
@@ -237,50 +213,50 @@ llm:
 
 ```bash
 # Audit a single document
-python kansanin/run_audit.py path/to/spec.md
+python -m kansanin path/to/spec.md
 
 # Audit multiple documents
-python kansanin/run_audit.py docs/*.md
+python -m kansanin docs/*.md
 
 # Custom severity threshold (default: high)
-python kansanin/run_audit.py spec.md --fail-on medium
-python kansanin/run_audit.py spec.md --fail-on critical
+python -m kansanin spec.md --fail-on medium
+python -m kansanin spec.md --fail-on critical
 ```
 
 ### Output formats
 
 ```bash
 # Human-readable report (default)
-python kansanin/run_audit.py spec.md
+python -m kansanin spec.md
 
 # JSON to stdout
-python kansanin/run_audit.py spec.md --json
+python -m kansanin spec.md --json
 
 # Save JSON report to file
-python kansanin/run_audit.py spec.md --out report.json
+python -m kansanin spec.md --out report.json
 
 # Show suppressed findings alongside active ones
-python kansanin/run_audit.py spec.md --show-suppressed
+python -m kansanin spec.md --show-suppressed
 
 # Disable allowlist filtering entirely
-python kansanin/run_audit.py spec.md --no-allowlist
+python -m kansanin spec.md --no-allowlist
 ```
 
 ### Tier 2/3 analysis
 
 ```bash
 # Enable NLP tier (readability metrics)
-python kansanin/run_audit.py spec.md --nlp
+python -m kansanin spec.md --nlp
 
 # Enable LLM tier (semantic analysis)
-python kansanin/run_audit.py spec.md --llm
+python -m kansanin spec.md --llm
 
 # Specify LLM provider and model
-python kansanin/run_audit.py spec.md --llm --llm-provider openai --llm-model gpt-4o
-python kansanin/run_audit.py spec.md --llm --llm-provider anthropic
+python -m kansanin spec.md --llm --llm-provider openai --llm-model gpt-4o
+python -m kansanin spec.md --llm --llm-provider anthropic
 
 # All tiers at once
-python kansanin/run_audit.py spec.md --nlp --llm --llm-provider anthropic
+python -m kansanin spec.md --nlp --llm --llm-provider anthropic
 ```
 
 Without `--llm`, Tier 3 detectors still run in **heuristic fallback** mode (lower coverage, but no API keys needed).
@@ -289,13 +265,13 @@ Without `--llm`, Tier 3 detectors still run in **heuristic fallback** mode (lowe
 
 ```bash
 # Launch on default port (8088), opens browser
-python kansanin/run_audit.py --serve
+python -m kansanin --serve
 
 # Custom port
-python kansanin/run_audit.py --serve --port 9000
+python -m kansanin --serve --port 9000
 
 # Specify root directory for file tree
-python kansanin/run_audit.py path/to/docs/ --serve
+python -m kansanin path/to/docs/ --serve
 ```
 
 The dashboard provides:
@@ -310,7 +286,7 @@ No external dependencies — uses stdlib `http.server` and a single HTML file wi
 ### CLI reference
 
 ```
-usage: run_audit.py [FILE ...] [options]
+usage: python -m kansanin [FILE ...] [options]
 
 positional arguments:
   FILE                    Document(s) to audit (.md)
@@ -371,10 +347,11 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.11' }
 
+      - name: Install Kansanin
+        run: pip install git+https://github.com/Barmagloth/Kansanin.git
+
       - name: Run Kansanin
-        run: |
-          git clone https://github.com/Barmagloth/Kansanin.git /tmp/kansanin
-          python /tmp/kansanin/kansanin/run_audit.py docs/*.md --fail-on high
+        run: python -m kansanin docs/*.md --fail-on high
 ```
 
 ---
@@ -395,7 +372,7 @@ kansanin:
   variables:
     FAIL_ON: "high"
   script:
-    - git clone --depth 1 https://github.com/Barmagloth/Kansanin.git /tmp/kansanin
+    - pip install git+https://github.com/Barmagloth/Kansanin.git
     - |
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
         FILES=$(git diff --name-only --diff-filter=ACMR "$CI_MERGE_REQUEST_DIFF_BASE_SHA" HEAD -- '*.md')
@@ -403,7 +380,7 @@ kansanin:
         FILES=$(find docs/ -name '*.md' -type f 2>/dev/null)
       fi
       [ -z "$FILES" ] && echo "No markdown files to audit." && exit 0
-      python /tmp/kansanin/kansanin/run_audit.py $FILES \
+      python -m kansanin $FILES \
         --fail-on "$FAIL_ON" --json --out kansanin-report.json
   artifacts:
     when: always
