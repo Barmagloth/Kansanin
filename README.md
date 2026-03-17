@@ -276,8 +276,9 @@ python -m kansanin path/to/docs/ --serve
 
 The dashboard provides:
 - **File tree navigator** (left panel) — browse and select documents for audit
-- **Findings table** (center) — severity filtering, text search, grouped by file
-- **Detail panel** (right) — evidence, description, remediation hints, LLM metadata
+- **Findings table** (center) — severity filtering, text search, grouped by file with line badges
+- **Detail panel** (right) — evidence, description, remediation hints, source viewer with highlighted evidence
+- **Interactive allowlist** — add findings to per-document allowlist directly from the Detail tab (reason, owner, expiry). Toggle "Suppressed" to see allowlisted findings with pre-filled entry data and scope badges
 - **Export JSON** — download full audit report
 - **NLP/LLM toggles** — enable optional analysis tiers from the UI
 
