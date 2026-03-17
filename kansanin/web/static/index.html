@@ -61,9 +61,13 @@ body {
   border-color: rgba(255,255,255,0.5);
 }
 #summary-bar {
-  font-size: 0.85rem;
-  opacity: 0.9;
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  background: var(--pico-card-background-color);
+  border-bottom: 1px solid var(--pico-muted-border-color);
+  color: var(--pico-muted-color);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .toggle-group {
   display: flex;
@@ -503,6 +507,8 @@ body {
   background: #e5e7eb;
   color: #6b7280;
   letter-spacing: 0.3px;
+  white-space: nowrap;
+  min-width: max-content;
 }
 
 /* ── Allowlist form ───────────────────────────────────── */
@@ -623,6 +629,91 @@ body {
 }
 .conf-block.filled { background: #3b82f6; border-color: #3b82f6; }
 .conf-block.empty  { background: transparent; }
+
+/* ── Settings panel ─────────────────────────────────────── */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 80px;
+}
+.settings-panel {
+  background: var(--pico-card-background-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  width: 420px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pico-muted-border-color);
+}
+.settings-header h3 { margin: 0; font-size: 1rem; }
+.settings-header button {
+  background: none; border: none; font-size: 1.3rem;
+  cursor: pointer; color: var(--pico-muted-color); padding: 0 4px;
+}
+.settings-body { padding: 16px; }
+.settings-section { margin-bottom: 18px; }
+.settings-section h4 {
+  margin: 0 0 10px 0; font-size: 0.82rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--pico-muted-color);
+}
+.settings-toggle {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 6px 0; cursor: pointer; font-size: 0.88rem;
+}
+.settings-toggle input[type="checkbox"] { margin: 0; width: 16px; height: 16px; }
+.settings-hint {
+  width: 100%; font-size: 0.75rem; color: var(--pico-muted-color);
+  margin-left: 24px; margin-top: -4px;
+}
+.settings-field { margin-bottom: 12px; }
+.settings-field label {
+  display: block; font-size: 0.78rem; font-weight: 500;
+  color: var(--pico-muted-color); margin-bottom: 4px;
+}
+.settings-field select,
+.settings-field input {
+  width: 100%; padding: 6px 8px; font-size: 0.85rem;
+  border: 1px solid var(--pico-muted-border-color); border-radius: 4px;
+  font-family: inherit; margin: 0;
+}
+
+/* ── Search filters ─────────────────────────────────────── */
+.search-filters {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.filter-btn {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border: 1px solid var(--pico-muted-border-color);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--pico-muted-color);
+  white-space: nowrap;
+  margin: 0;
+}
+.filter-btn:hover { background: var(--pico-primary-focus); color: var(--pico-color); }
+.filter-btn.active {
+  background: var(--pico-primary);
+  color: white;
+  border-color: var(--pico-primary);
+}
 </style>
 </head>
 <body>
@@ -630,15 +721,11 @@ body {
 <!-- ── Toolbar ────────────────────────────────────────────── -->
 <div id="toolbar">
   <h1>Kansanin</h1>
-  <span id="summary-bar">Select files and press Scan</span>
   <div class="spacer"></div>
-  <div class="toggle-group">
-    <label><input type="checkbox" id="toggle-nlp"> NLP</label>
-    <label><input type="checkbox" id="toggle-llm"> LLM</label>
-  </div>
   <button id="btn-scan" class="primary-btn">Scan</button>
   <button id="btn-clear">Clear</button>
   <button id="btn-export">Export JSON</button>
+  <button id="btn-settings" title="Settings">&#x2699;</button>
   <select id="locale-select" onchange="setLocale(this.value)">
     <option value="en">EN</option>
     <option value="ru">RU</option>
@@ -665,6 +752,7 @@ body {
 
   <!-- Center: Findings -->
   <div id="findings-panel">
+    <div id="summary-bar">Select files and press Scan</div>
     <div id="filter-bar">
       <div class="severity-filters">
         <span class="sev-chip active" data-sev="critical">&#x1F534; Critical</span>
@@ -674,6 +762,12 @@ body {
         <span class="sev-chip active" data-sev="info">&#x26AA; Info</span>
       </div>
       <input type="text" id="search-input" placeholder="Search findings...">
+      <div class="search-filters">
+        <button class="filter-btn" data-filter="line" data-filter-key="filterLine">Line</button>
+        <button class="filter-btn" data-filter="confidence" data-filter-key="filterConf">Conf</button>
+        <button class="filter-btn" data-filter="category" data-filter-key="filterCat">Category</button>
+        <button class="filter-btn" data-filter="role" data-filter-key="filterRole">Role</button>
+      </div>
       <label style="display:flex;align-items:center;gap:4px;font-size:0.78rem;cursor:pointer;white-space:nowrap;margin:0">
         <input type="checkbox" id="toggle-suppressed" style="margin:0;width:14px;height:14px"> Suppressed
       </label>
@@ -692,6 +786,52 @@ body {
 
 </div>
 
+<!-- Settings panel (overlay) -->
+<div id="settings-overlay" class="settings-overlay" style="display:none">
+  <div class="settings-panel">
+    <div class="settings-header">
+      <h3 id="settings-title">Settings</h3>
+      <button id="settings-close">&times;</button>
+    </div>
+    <div class="settings-body">
+      <div class="settings-section">
+        <h4 id="settings-tiers-title">Analysis tiers</h4>
+        <label class="settings-toggle">
+          <input type="checkbox" id="toggle-nlp">
+          <span>NLP (Tier 2)</span>
+          <span class="settings-hint" id="settings-nlp-hint">Readability metrics (spaCy + textstat)</span>
+        </label>
+        <label class="settings-toggle">
+          <input type="checkbox" id="toggle-llm">
+          <span>LLM (Tier 3)</span>
+          <span class="settings-hint" id="settings-llm-hint">Semantic analysis (contradictions, terminology, redundancy)</span>
+        </label>
+      </div>
+      <div class="settings-section" id="llm-settings" style="display:none">
+        <h4 id="settings-llm-config-title">LLM configuration</h4>
+        <div class="settings-field">
+          <label id="settings-provider-label">Provider</label>
+          <select id="llm-provider">
+            <option value="">Auto (env / config)</option>
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic</option>
+            <option value="deepseek">DeepSeek</option>
+            <option value="onnx">ONNX (local)</option>
+          </select>
+        </div>
+        <div class="settings-field">
+          <label id="settings-model-label">Model</label>
+          <input type="text" id="llm-model" placeholder="Default (from config)">
+        </div>
+        <div class="settings-field">
+          <label id="settings-temp-label">Temperature</label>
+          <input type="number" id="llm-temperature" min="0" max="2" step="0.1" value="0.0">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── State ────────────────────────────────────────────────────────────────────
 const state = {
@@ -707,6 +847,7 @@ const state = {
   activeDetailTab: 'detail',
   showSuppressed: false,
   locale: localStorage.getItem('kansanin-locale') || 'en',
+  searchField: null,  // null = all fields, or 'line' | 'confidence' | 'category' | 'role'
 };
 
 const _I18N = {
@@ -766,6 +907,7 @@ const _I18N = {
     couldNotLoadSource: 'Could not load source file:',
     noSourcePath: 'No source path available',
     scanFailed: 'Scan failed:',
+    scanErrors: 'Scan errors',
     failedLoadFiles: 'Failed to load files:',
     failedLoadDir: 'Failed to load directory:',
     runningAudit: 'Running audit...',
@@ -782,6 +924,20 @@ const _I18N = {
     suppBadge: 'SUP',
     findingsCount: '(1 or more)',
     none: '(none)',
+    settings: 'Settings',
+    settingsTiers: 'Analysis tiers',
+    nlpHint: 'Readability metrics (spaCy + textstat)',
+    llmHint: 'Semantic analysis (contradictions, terminology, redundancy)',
+    llmConfig: 'LLM configuration',
+    provider: 'Provider',
+    model: 'Model',
+    temperature: 'Temperature',
+    autoProvider: 'Auto (env / config)',
+    defaultModel: 'Default (from config)',
+    filterLine: 'Line',
+    filterConf: 'Conf',
+    filterCat: 'Category',
+    filterRole: 'Role',
   },
   ru: {
     appTitle: 'Kansanin',
@@ -839,6 +995,7 @@ const _I18N = {
     couldNotLoadSource: '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a:',
     noSourcePath: '\u041f\u0443\u0442\u044c \u043a \u0438\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0443 \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442',
     scanFailed: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0430\u0443\u0434\u0438\u0442\u0430:',
+    scanErrors: '\u041e\u0448\u0438\u0431\u043a\u0438 \u0430\u0443\u0434\u0438\u0442\u0430',
     failedLoadFiles: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438 \u0444\u0430\u0439\u043b\u043e\u0432:',
     failedLoadDir: '\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0438 \u043a\u0430\u0442\u0430\u043b\u043e\u0433\u0430:',
     runningAudit: '\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0430\u0443\u0434\u0438\u0442...',
@@ -855,6 +1012,20 @@ const _I18N = {
     suppBadge: '\u0421\u041a\u0420',
     findingsCount: '(1+)',
     none: '(\u043d\u0435\u0442)',
+    settings: '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438',
+    settingsTiers: '\u0423\u0440\u043e\u0432\u043d\u0438 \u0430\u043d\u0430\u043b\u0438\u0437\u0430',
+    nlpHint: '\u041c\u0435\u0442\u0440\u0438\u043a\u0438 \u0447\u0438\u0442\u0430\u0435\u043c\u043e\u0441\u0442\u0438 (spaCy + textstat)',
+    llmHint: '\u0421\u0435\u043c\u0430\u043d\u0442\u0438\u0447\u0435\u0441\u043a\u0438\u0439 \u0430\u043d\u0430\u043b\u0438\u0437 (\u043f\u0440\u043e\u0442\u0438\u0432\u043e\u0440\u0435\u0447\u0438\u044f, \u0442\u0435\u0440\u043c\u0438\u043d\u043e\u043b\u043e\u0433\u0438\u044f, \u0434\u0443\u0431\u043b\u0438)',
+    llmConfig: '\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 LLM',
+    provider: '\u041f\u0440\u043e\u0432\u0430\u0439\u0434\u0435\u0440',
+    model: '\u041c\u043e\u0434\u0435\u043b\u044c',
+    temperature: '\u0422\u0435\u043c\u043f\u0435\u0440\u0430\u0442\u0443\u0440\u0430',
+    autoProvider: '\u0410\u0432\u0442\u043e (\u0438\u0437 env / \u043a\u043e\u043d\u0444\u0438\u0433\u0430)',
+    defaultModel: '\u041f\u043e \u0443\u043c\u043e\u043b\u0447\u0430\u043d\u0438\u044e (\u0438\u0437 \u043a\u043e\u043d\u0444\u0438\u0433\u0430)',
+    filterLine: '\u0421\u0442\u0440\u043e\u043a\u0430',
+    filterConf: '\u0423\u0432\u0435\u0440.',
+    filterCat: '\u041a\u0430\u0442\u0435\u0433\u043e\u0440\u0438\u044f',
+    filterRole: '\u0420\u043e\u043b\u044c',
   }
 };
 
@@ -885,6 +1056,21 @@ function renderAll() {
   const suppLabel = document.getElementById('toggle-suppressed').parentElement;
   suppLabel.childNodes[suppLabel.childNodes.length - 1].textContent = ' ' + t('suppressed');
   document.querySelector('#file-panel-header h3').textContent = t('files');
+  // Settings panel labels
+  document.getElementById('settings-title').textContent = t('settings');
+  document.getElementById('settings-tiers-title').textContent = t('settingsTiers');
+  document.getElementById('settings-nlp-hint').textContent = t('nlpHint');
+  document.getElementById('settings-llm-hint').textContent = t('llmHint');
+  document.getElementById('settings-llm-config-title').textContent = t('llmConfig');
+  document.getElementById('settings-provider-label').textContent = t('provider');
+  document.getElementById('settings-model-label').textContent = t('model');
+  document.getElementById('settings-temp-label').textContent = t('temperature');
+  document.getElementById('btn-settings').title = t('settings');
+  // Filter buttons
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    const key = btn.dataset.filterKey;
+    if (key) btn.textContent = t(key);
+  });
   renderFileTree();
   renderFindings();
   renderDetail();
@@ -995,6 +1181,22 @@ function collectAllFiles(nodes) {
 }
 
 // ── Findings list ────────────────────────────────────────────────────────────
+function matchesSearch(f, query, field) {
+  const q = query.toLowerCase();
+  if (!field) {
+    // Search all fields
+    const searchable = `${f.defect_id} ${f.defect_class} ${f.evidence_text} ${f.message} ${f.section_heading}`.toLowerCase();
+    return searchable.includes(q);
+  }
+  switch (field) {
+    case 'line': return String(f.line || '').includes(q);
+    case 'confidence': return (f.confidence || '').toLowerCase().includes(q);
+    case 'category': return (f.term_category || f.defect_class || '').toLowerCase().includes(q);
+    case 'role': return (f.section_role || '').toLowerCase().includes(q);
+    default: return true;
+  }
+}
+
 function getFilteredFindings() {
   if (!state.scanResult) return [];
   const results = [];
@@ -1003,9 +1205,7 @@ function getFilteredFindings() {
     const filtered = fileResult.findings.filter(f => {
       if (!state.activeSeverities.has(f.severity)) return false;
       if (state.searchQuery) {
-        const q = state.searchQuery.toLowerCase();
-        const searchable = `${f.defect_id} ${f.defect_class} ${f.evidence_text} ${f.message} ${f.section_heading}`.toLowerCase();
-        if (!searchable.includes(q)) return false;
+        if (!matchesSearch(f, state.searchQuery, state.searchField)) return false;
       }
       return true;
     });
@@ -1017,9 +1217,7 @@ function getFilteredFindings() {
         const f = s.finding;
         if (!state.activeSeverities.has(f.severity)) return false;
         if (state.searchQuery) {
-          const q = state.searchQuery.toLowerCase();
-          const searchable = `${f.defect_id} ${f.defect_class} ${f.evidence_text} ${f.message} ${f.section_heading}`.toLowerCase();
-          if (!searchable.includes(q)) return false;
+          if (!matchesSearch(f, state.searchQuery, state.searchField)) return false;
         }
         return true;
       }).map(s => {
@@ -1197,9 +1395,17 @@ function buildDetailHTML(f) {
   html += `<div class="detail-section"><h4>${t('evidence')}</h4>`;
   html += `<pre>${esc(f.evidence_text)}</pre></div>`;
 
-  // Message
+  // Description (locale-aware) + original message
+  const descText = state.locale === 'ru'
+    ? (f.description_ru || f.message)
+    : (f.description_en || f.message);
   html += `<div class="detail-section"><h4>${t('description')}</h4>`;
-  html += `<p>${esc(f.message)}</p></div>`;
+  html += `<p>${esc(descText)}</p>`;
+  // Show original detector message as additional detail if it differs
+  if (f.message && f.message !== descText) {
+    html += `<p style="margin-top:6px;font-size:0.85rem;color:var(--pico-muted-color)">${esc(f.message)}</p>`;
+  }
+  html += `</div>`;
 
   // Remediation
   const remText = state.locale === 'ru'
@@ -1450,11 +1656,18 @@ async function doScan() {
   listEl.innerHTML = '<div class="loading-state">' + t('runningAudit') + '</div>';
 
   try {
-    const result = await apiPost('/api/scan', {
+    const scanBody = {
       paths: paths,
       use_nlp: document.getElementById('toggle-nlp').checked,
       use_llm: document.getElementById('toggle-llm').checked,
-    });
+    };
+    const llmProvider = document.getElementById('llm-provider').value;
+    const llmModel = document.getElementById('llm-model').value.trim();
+    const llmTemp = document.getElementById('llm-temperature').value;
+    if (llmProvider) scanBody.llm_provider = llmProvider;
+    if (llmModel) scanBody.llm_model = llmModel;
+    if (llmTemp !== '') scanBody.llm_temperature = parseFloat(llmTemp);
+    const result = await apiPost('/api/scan', scanBody);
     state.scanResult = result;
     state.selectedFinding = null;
 
@@ -1467,6 +1680,7 @@ async function doScan() {
     if (result.errors && result.errors.length > 0) {
       const errMsgs = result.errors.map(e => `${e.path}: ${e.error}`).join('\n');
       console.warn('Scan errors:', errMsgs);
+      alert(t('scanErrors') + ':\n' + errMsgs);
     }
     renderFileTree();
     renderFindings();
@@ -1651,6 +1865,42 @@ async function init() {
   }
   setupResize('resize-left', 'file-panel', 'left');
   setupResize('resize-right', 'detail-panel', 'right');
+
+  // Settings panel
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    document.getElementById('settings-overlay').style.display = '';
+  });
+  document.getElementById('settings-close').addEventListener('click', () => {
+    document.getElementById('settings-overlay').style.display = 'none';
+  });
+  document.getElementById('settings-overlay').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+  });
+  // Show/hide LLM config when LLM toggle changes
+  document.getElementById('toggle-llm').addEventListener('change', (e) => {
+    document.getElementById('llm-settings').style.display = e.target.checked ? '' : 'none';
+  });
+
+  // Search filter buttons (toggle field-specific search)
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const field = btn.dataset.filter;
+      if (state.searchField === field) {
+        state.searchField = null;
+        btn.classList.remove('active');
+      } else {
+        state.searchField = field;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+      // Update placeholder
+      const ph = state.searchField
+        ? t('filter' + state.searchField.charAt(0).toUpperCase() + state.searchField.slice(1)) + '...'
+        : t('searchPlaceholder');
+      document.getElementById('search-input').placeholder = ph;
+      renderFindings();
+    });
+  });
 
   // Set initial locale
   document.getElementById('locale-select').value = state.locale;

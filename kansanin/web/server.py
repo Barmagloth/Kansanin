@@ -200,6 +200,23 @@ def _enrich_remediation_i18n(findings_json: list[dict]) -> None:
         d["remediation_ru"] = i18n.get("ru", original)
 
 
+# ── Description i18n (from detector metadata) ────────────────────────────────
+
+_DESCRIPTION_I18N: dict[str, dict[str, str]] = {
+    m["id"]: {"en": m["description"], "ru": m["description_ru"]}
+    for m in _DETECTOR_META
+}
+
+
+def _enrich_description_i18n(findings_json: list[dict]) -> None:
+    """Add description_en / description_ru fields to each finding dict."""
+    for d in findings_json:
+        defect_id = d.get("defect_id", "")
+        i18n = _DESCRIPTION_I18N.get(defect_id, {})
+        d["description_en"] = i18n.get("en", "")
+        d["description_ru"] = i18n.get("ru", "")
+
+
 # ── HTTP Handler ─────────────────────────────────────────────────────────────
 
 class KansaninHandler(BaseHTTPRequestHandler):
@@ -246,12 +263,14 @@ class KansaninHandler(BaseHTTPRequestHandler):
         elif path == "/api/files":
             params = parse_qs(parsed.query)
             root = params.get("root", [str(self.root_dir)])[0]
-            root_path = Path(root)
+            root_path = Path(root).resolve()
             if not root_path.is_dir():
                 self._send_error_json(400, f"Not a directory: {root}")
                 return
+            # Update server root so scan path-boundary checks work
+            KansaninHandler.root_dir = root_path
             tree = _build_file_tree(root_path)
-            self._send_json({"root": str(root_path.resolve()), "tree": tree})
+            self._send_json({"root": str(root_path), "tree": tree})
 
         elif path == "/api/detectors":
             self._send_json(_DETECTOR_META)
@@ -313,6 +332,14 @@ class KansaninHandler(BaseHTTPRequestHandler):
         use_nlp = body.get("use_nlp", False)
         use_llm = body.get("use_llm", False)
         fail_on = body.get("fail_on", _DEFAULT_FAIL_ON)
+        llm_provider = body.get("llm_provider") or None
+        llm_model = body.get("llm_model") or None
+        llm_temperature = body.get("llm_temperature")
+        if llm_temperature is not None:
+            try:
+                llm_temperature = float(llm_temperature)
+            except (ValueError, TypeError):
+                llm_temperature = None
 
         if not paths:
             self._send_error_json(400, "No files specified")
@@ -338,11 +365,21 @@ class KansaninHandler(BaseHTTPRequestHandler):
                 continue
 
             try:
+                llm_cfg = None
+                if use_llm and any(v is not None for v in (llm_provider, llm_model, llm_temperature)):
+                    llm_cfg = {}
+                    if llm_provider:
+                        llm_cfg["provider"] = llm_provider
+                    if llm_model:
+                        llm_cfg["model"] = llm_model
+                    if llm_temperature is not None:
+                        llm_cfg["temperature"] = llm_temperature
                 findings, traces, _al, doc = run_with_traces(
                     fpath,
                     use_allowlist=True,
                     use_nlp=use_nlp,
                     use_llm=use_llm,
+                    llm_config=llm_cfg,
                 )
                 violated = any(
                     f.severity.value in blocking
@@ -365,9 +402,11 @@ class KansaninHandler(BaseHTTPRequestHandler):
                     })
                 findings_json = findings_to_json(findings, doc=doc)
                 _enrich_remediation_i18n(findings_json)
+                _enrich_description_i18n(findings_json)
                 # Also enrich suppressed findings
                 for sj in suppressed_json:
                     _enrich_remediation_i18n([sj["finding"]])
+                    _enrich_description_i18n([sj["finding"]])
                 per_file.append({
                     "path": str(fpath),
                     "findings": findings_json,
