@@ -88,7 +88,14 @@ _DETECTOR_META = [
     {"id": "D015", "class": "IMPLEMENTATION_BIAS",     "tier": 3, "description": "Implementation-specific details in requirements",     "description_ru": "Детали реализации в нормативных требованиях"},
     {"id": "D016", "class": "TERMINOLOGY_INCONSISTENCY", "tier": 3, "description": "Inconsistent terminology across sections",          "description_ru": "Несогласованная терминология между секциями"},
     {"id": "D017", "class": "REDUNDANCY",              "tier": 3, "description": "Redundant/duplicate requirements",                    "description_ru": "Дублирующие/избыточные требования"},
+    {"id": "D011", "class": "MISSING_TRACE",            "tier": 1, "description": "Normative section lacks traceability references (REQ/ADR/issue)", "description_ru": "Нормативная секция без ссылок на трассируемость (REQ/ADR/issue)"},
     {"id": "D018", "class": "ADR_ANTIPATTERN",         "tier": 1, "description": "Architecture Decision Record anti-patterns",          "description_ru": "Антипаттерны Architecture Decision Record"},
+    {"id": "D018.1", "class": "MISSING_ALTERNATIVES",  "tier": 1, "description": "ADR missing alternatives section",                    "description_ru": "В ADR отсутствует секция альтернатив"},
+    {"id": "D018.2", "class": "MISSING_CONSEQUENCES",  "tier": 1, "description": "ADR missing consequences section",                    "description_ru": "В ADR отсутствует секция последствий"},
+    {"id": "D018.3", "class": "MISSING_RATIONALE",     "tier": 1, "description": "ADR missing rationale/reasoning",                     "description_ru": "В ADR отсутствует обоснование решения"},
+    {"id": "D018.4", "class": "THIN_SECTION",          "tier": 1, "description": "ADR section too thin — lacks meaningful detail",       "description_ru": "Секция ADR слишком поверхностная — не хватает деталей"},
+    {"id": "D018.5", "class": "OUTCOME_ONLY",          "tier": 1, "description": "ADR records outcome only without analysis",            "description_ru": "ADR фиксирует только результат без анализа"},
+    {"id": "D018.6", "class": "LAZY_ALTERNATIVES",     "tier": 1, "description": "Lazy alternatives in ADR — vague phrases like 'or equivalent'", "description_ru": "Ленивые альтернативы в ADR — расплывчатые фразы вроде «или аналог»"},
 ]
 
 
@@ -182,19 +189,56 @@ _REMEDIATION_I18N: dict[str, dict[str, str]] = {
         "en": "Remove or consolidate redundant requirement.",
         "ru": "\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0438\u043b\u0438 \u043e\u0431\u044a\u0435\u0434\u0438\u043d\u0438\u0442\u044c \u0434\u0443\u0431\u043b\u0438\u0440\u0443\u044e\u0449\u0435\u0435 \u0442\u0440\u0435\u0431\u043e\u0432\u0430\u043d\u0438\u0435.",
     },
+    "D011": {
+        "en": "Add traceability references (REQ-nnn, ADR-nnn, or issue links).",
+        "ru": "Добавьте ссылки на трассируемость (REQ-nnn, ADR-nnn или ссылки на задачи).",
+    },
     "D018": {
         "en": "Follow ADR template: include status, context, decision, alternatives, consequences.",
-        "ru": "\u0421\u043b\u0435\u0434\u043e\u0432\u0430\u0442\u044c \u0448\u0430\u0431\u043b\u043e\u043d\u0443 ADR: \u0443\u043a\u0430\u0437\u0430\u0442\u044c \u0441\u0442\u0430\u0442\u0443\u0441, \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442, \u0440\u0435\u0448\u0435\u043d\u0438\u0435, "
-              "\u0430\u043b\u044c\u0442\u0435\u0440\u043d\u0430\u0442\u0438\u0432\u044b, \u043f\u043e\u0441\u043b\u0435\u0434\u0441\u0442\u0432\u0438\u044f.",
+        "ru": "Следовать шаблону ADR: указать статус, контекст, решение, "
+              "альтернативы, последствия.",
+    },
+    "D018.1": {
+        "en": "Add an 'Alternatives Considered' section listing at least 2 options.",
+        "ru": "Добавьте секцию «Рассмотренные альтернативы» с минимум 2 вариантами.",
+    },
+    "D018.2": {
+        "en": "Add a 'Consequences' section describing positive and negative outcomes.",
+        "ru": "Добавьте секцию «Последствия» с описанием позитивных и негативных исходов.",
+    },
+    "D018.3": {
+        "en": "Add rationale explaining why this decision was chosen over alternatives.",
+        "ru": "Добавьте обоснование, почему выбрано именно это решение среди альтернатив.",
+    },
+    "D018.4": {
+        "en": "Expand the section with meaningful detail — at least 2-3 sentences of analysis.",
+        "ru": "Расширьте секцию содержательными деталями — минимум 2-3 предложения анализа.",
+    },
+    "D018.5": {
+        "en": "Add analysis and reasoning, not just the final outcome.",
+        "ru": "Добавьте анализ и рассуждения, а не только итоговый результат.",
+    },
+    "D018.6": {
+        "en": "Replace vague alternatives ('or equivalent', 'other options') with concrete named options.",
+        "ru": "Замените расплывчатые альтернативы («или аналог», «другие варианты») на конкретные именованные опции.",
     },
 }
 
 
 def _enrich_remediation_i18n(findings_json: list[dict]) -> None:
-    """Add remediation_en / remediation_ru fields to each finding dict."""
+    """Add remediation_en / remediation_ru fields to each finding dict.
+
+    Falls back to the base detector ID (e.g. D018 for D018.3) when an
+    exact sub-check entry is not present in _REMEDIATION_I18N.
+    """
     for d in findings_json:
         defect_id = d.get("defect_id", "")
-        i18n = _REMEDIATION_I18N.get(defect_id, {})
+        i18n = _REMEDIATION_I18N.get(defect_id)
+        if i18n is None and "." in defect_id:
+            base_id = defect_id.split(".")[0]
+            i18n = _REMEDIATION_I18N.get(base_id, {})
+        elif i18n is None:
+            i18n = {}
         original = d.get("remediation_hint", "")
         d["remediation_en"] = i18n.get("en", original)
         d["remediation_ru"] = i18n.get("ru", original)
@@ -209,10 +253,19 @@ _DESCRIPTION_I18N: dict[str, dict[str, str]] = {
 
 
 def _enrich_description_i18n(findings_json: list[dict]) -> None:
-    """Add description_en / description_ru fields to each finding dict."""
+    """Add description_en / description_ru fields to each finding dict.
+
+    Falls back to the base detector ID (e.g. D018 for D018.3) when an
+    exact sub-check entry is not present in _DESCRIPTION_I18N.
+    """
     for d in findings_json:
         defect_id = d.get("defect_id", "")
-        i18n = _DESCRIPTION_I18N.get(defect_id, {})
+        i18n = _DESCRIPTION_I18N.get(defect_id)
+        if i18n is None and "." in defect_id:
+            base_id = defect_id.split(".")[0]
+            i18n = _DESCRIPTION_I18N.get(base_id, {})
+        elif i18n is None:
+            i18n = {}
         d["description_en"] = i18n.get("en", "")
         d["description_ru"] = i18n.get("ru", "")
 
