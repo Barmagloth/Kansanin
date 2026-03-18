@@ -1,5 +1,5 @@
 # detectors/d003_undefined_acronym.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D003 · UNDEFINED_ACRONYM — Неопределённая аббревиатура.
 
@@ -198,6 +198,29 @@ def detect(doc: Document) -> list[Finding]:
             matched_term=acr,
             term_category="undefined_acronym",
             section_role=role.value if role else None,
+            message_templates={
+                "en": (
+                    "Acronym '{acronym}' is used {count} time(s) but never defined. "
+                    "Add a definition on first use or in a glossary section."
+                ),
+                "ru": (
+                    "Аббревиатура '{acronym}' используется {count} раз(а), но не определена. "
+                    "Добавьте определение при первом использовании или в раздел глоссария."
+                ),
+            },
+            message_args={"acronym": acr, "count": count},
+            remediation_templates={
+                "en": (
+                    "Define acronym on first use: 'Full Name (ACRONYM)' or add to "
+                    "glossary/abbreviations section. IEEE 830 / ISO 29148."
+                ),
+                "ru": (
+                    "Определите аббревиатуру при первом использовании: "
+                    "'Полное Название (АББР)' или добавьте в раздел глоссария/сокращений. "
+                    "IEEE 830 / ISO 29148."
+                ),
+            },
+            remediation_args={},
         ))
 
     findings.sort(key=lambda f: (f.section_id, f.sentence_id))

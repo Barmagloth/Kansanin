@@ -1,5 +1,5 @@
 # detectors/d002_escape_clauses.py
-# version: 0.1.1
+# version: 0.2.0
 """
 D002 · ESCAPE_CLAUSE — Лазейки и оговорки.
 
@@ -88,5 +88,23 @@ def detect(doc: Document) -> list[Finding]:
                         evidence_span=(m.start(), m.end()),
                         message=f'Найдена лазейка: «{m.group(0)}» — требование можно формально не выполнить.',
                         remediation_hint=_REMEDIATION,
+                        message_templates={
+                            "en": "Escape clause found: \"{match}\" — the requirement can be formally circumvented.",
+                            "ru": "Найдена лазейка: «{match}» — требование можно формально не выполнить.",
+                        },
+                        message_args={"match": m.group(0)},
+                        remediation_templates={
+                            "en": (
+                                "Replace the escape clause with an explicit condition "
+                                "with a measurable trigger, or make the requirement unconditional. "
+                                "Example: 'if possible' -> 'when X is present, the system shall Y'."
+                            ),
+                            "ru": (
+                                "Заменить лазейку на явное условие с измеримым триггером или "
+                                "сформулировать требование безусловно. "
+                                "Пример: «если возможно» → «при наличии X система обязана Y»."
+                            ),
+                        },
+                        remediation_args={},
                     ))
     return findings

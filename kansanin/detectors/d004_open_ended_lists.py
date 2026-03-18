@@ -1,5 +1,5 @@
 # detectors/d004_open_ended_lists.py
-# version: 0.2.0
+# version: 0.3.0
 """
 D004 · OPEN_ENDED_LIST — Незавершённые перечисления.
 
@@ -92,5 +92,21 @@ def detect(doc: Document) -> list[Finding]:
                         ),
                         remediation_hint=_REMEDIATION,
                         section_role=role.value,
+                        message_templates={
+                            "en": "Open-ended list: \"{match}\" — the scope of the requirement is undefined.",
+                            "ru": "Незавершённое перечисление: «{match}» — объём требования не определён.",
+                        },
+                        message_args={"match": m.group(0)},
+                        remediation_templates={
+                            "en": (
+                                "Close the enumeration: list all permitted values explicitly "
+                                "or introduce a closed list with an explicit extension procedure via CR/RFC."
+                            ),
+                            "ru": (
+                                "Закрыть перечисление: перечислить все допустимые варианты явно "
+                                "или ввести закрытый список с явной процедурой расширения через CR/RFC."
+                            ),
+                        },
+                        remediation_args={},
                     ))
     return findings

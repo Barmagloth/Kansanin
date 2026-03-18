@@ -1,5 +1,5 @@
 # allowlist/engine.py
-# version: 0.2.0
+# version: 0.3.0
 """
 Трёхуровневый allowlist engine.
 
@@ -13,6 +13,7 @@ AL-2: schema validation, strict section_roles, reason/owner/expires
 """
 from __future__ import annotations
 
+import datetime
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -128,6 +129,21 @@ def _load_yaml(path: Path) -> dict:
         return {}
 
 
+# ── Utilities ────────────────────────────────────────────────────────────────
+
+def _is_expired(expires_str: str | None) -> bool:
+    """Check whether an ISO-date *expires_str* is in the past.
+
+    Returns ``False`` for ``None`` or malformed dates (treat as non-expiring).
+    """
+    if not expires_str:
+        return False
+    try:
+        return datetime.date.fromisoformat(expires_str) < datetime.date.today()
+    except ValueError:
+        return False
+
+
 # ── Allowlist class ───────────────────────────────────────────────────────────
 
 class Allowlist:
@@ -208,14 +224,12 @@ class Allowlist:
         Возвращает (active_findings, suppression_traces).
         """
         active: list[Finding] = []
-        traces: list[SuppressionTrace] = []
         for f in findings:
             result = self.check(f)
-            if result.suppressed:
-                traces.append(SuppressionTrace(finding=f, entry=result.entry))
-            else:
+            if not result.suppressed:
                 active.append(f)
-        return active, traces
+        # traces are already recorded by check() in self._traces
+        return active, list(self._traces)
 
     @property
     def traces(self) -> list[SuppressionTrace]:
@@ -229,9 +243,28 @@ class Allowlist:
             "document": len(self._document),
         }
 
+    def all_entries(self) -> list[tuple[str, AllowlistEntry]]:
+        """Return all entries as ``(scope, entry)`` tuples.
+
+        Order: global, project, document — matching review iteration order.
+        """
+        result: list[tuple[str, AllowlistEntry]] = []
+        for scope, entries in [
+            ("global", self._global),
+            ("project", self._project),
+            ("document", self._document),
+        ]:
+            for entry in entries:
+                result.append((scope, entry))
+        return result
+
     @staticmethod
     def _matches(finding: Finding, entry: AllowlistEntry) -> bool:
         """Проверка совпадения finding с entry (exact match, defect_id scoping)."""
+        # v0.3.0 — expires enforcement (local date)
+        if _is_expired(entry.expires):
+            return False
+
         # defect_id must match
         if finding.defect_id != entry.defect_id:
             return False

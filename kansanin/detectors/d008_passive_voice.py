@@ -1,5 +1,5 @@
 # detectors/d008_passive_voice.py
-# version: 0.2.0
+# version: 0.3.0
 """
 D008 · PASSIVE_WITHOUT_AGENT — Страдательный залог без указания агента.
 
@@ -235,6 +235,33 @@ def _detect_en(
             matched_term=m.group(0),
             term_category="passive_without_agent",
             section_role=role.value,
+            message_templates={
+                "en": (
+                    "Passive voice '{match}' without an explicit agent. "
+                    "Who is responsible for this action?"
+                ),
+                "ru": (
+                    "Страдательный залог '{match}' без указания агента. "
+                    "Кто отвечает за это действие?"
+                ),
+            },
+            message_args={"match": m.group(0)},
+            remediation_templates={
+                "en": (
+                    "Rewrite as active voice with an explicit actor, or add 'by <agent>'. "
+                    "Example: instead of 'data shall be validated' -> "
+                    "'the validation service shall validate data'. "
+                    "IEEE 830: requirements should be unambiguously assignable."
+                ),
+                "ru": (
+                    "Перепишите в активном залоге с указанием ответственного агента "
+                    "или добавьте агента в творительном падеже. "
+                    "Пример: вместо «данные должны быть проверены» -> "
+                    "«сервис валидации должен проверить данные». "
+                    "IEEE 830: требования должны быть однозначно назначаемыми."
+                ),
+            },
+            remediation_args={},
         ))
 
 
@@ -279,4 +306,31 @@ def _detect_ru(
             matched_term=m.group(0),
             term_category="passive_without_agent",
             section_role=role.value,
+            message_templates={
+                "en": (
+                    "Passive voice '{match}' without an explicit agent. "
+                    "Who is responsible for this action?"
+                ),
+                "ru": (
+                    "Страдательный залог «{match}» без указания агента. "
+                    "Кто отвечает за это действие?"
+                ),
+            },
+            message_args={"match": m.group(0)},
+            remediation_templates={
+                "en": (
+                    "Rewrite as active voice with an explicit actor, or add 'by <agent>'. "
+                    "Example: instead of 'data shall be validated' -> "
+                    "'the validation service shall validate data'. "
+                    "IEEE 830: requirements should be unambiguously assignable."
+                ),
+                "ru": (
+                    "Перепишите в активном залоге с указанием ответственного агента "
+                    "или добавьте агента в творительном падеже. "
+                    "Пример: вместо «данные должны быть проверены» -> "
+                    "«сервис валидации должен проверить данные». "
+                    "IEEE 830: требования должны быть однозначно назначаемыми."
+                ),
+            },
+            remediation_args={},
         ))

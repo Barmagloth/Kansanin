@@ -1,5 +1,5 @@
 # detectors/d006_missing_priority.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D006 · MISSING_PRIORITY — Отсутствие приоритета у требования.
 
@@ -141,6 +141,32 @@ def detect(doc: Document) -> list[Finding]:
                 f"с приоритетами — добавьте приоритет для согласованности."
             ),
             remediation_hint=_REMEDIATION,
+            message_templates={
+                "en": (
+                    "Requirement uses a normative modal verb but has no priority marker. "
+                    "The document contains {prioritized_count} prioritized requirements "
+                    "— add a priority marker for consistency."
+                ),
+                "ru": (
+                    "Требование использует нормативный глагол, но не имеет маркера "
+                    "приоритета. Документ содержит {prioritized_count} требований "
+                    "с приоритетами — добавьте приоритет для согласованности."
+                ),
+            },
+            message_args={"prioritized_count": str(prioritized_count)},
+            remediation_templates={
+                "en": (
+                    "Add a priority marker to the requirement. IEEE 830 / ISO 29148 recommend "
+                    "explicitly stating the priority of each requirement (Must/Shall, Should, May "
+                    "or equivalent). Example: FR-003 [MUST]: ..."
+                ),
+                "ru": (
+                    "Добавить маркер приоритета к требованию. IEEE 830 / ISO 29148 рекомендуют "
+                    "явно указывать приоритет каждого требования (Must/Shall, Should, May или "
+                    "эквивалент). Пример: FR-003 [MUST]: ..."
+                ),
+            },
+            remediation_args={},
         ))
 
     return findings

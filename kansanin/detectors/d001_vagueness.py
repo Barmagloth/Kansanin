@@ -1,5 +1,5 @@
 # detectors/d001_vagueness.py
-# version: 0.1.1
+# version: 0.2.0
 """
 D001 · VAGUENESS — Расплывчатые формулировки.
 
@@ -83,6 +83,28 @@ def _has_normative_modal(text: str) -> bool:
     return bool(_NORMATIVE_MODAL.search(text))
 
 
+# ─── static i18n message templates ──────────────────────────────────────────
+
+_MSG_EN = (
+    'Vague term [{category}]: "{match}"'
+    " — not verifiable without measurable criteria."
+)
+_MSG_EN_MODAL = (
+    'Vague term [{category}]: "{match}"'
+    " — not verifiable without measurable criteria."
+    " Escalated by normative modal verb."
+)
+_MSG_RU = (
+    "Расплывчатый термин [{category}]: «{match}»"
+    " — не верифицируем без измеримого критерия."
+)
+_MSG_RU_MODAL = (
+    "Расплывчатый термин [{category}]: «{match}»"
+    " — не верифицируем без измеримого критерия."
+    " Усилено нормативным модальным глаголом."
+)
+
+
 # ─── severity + confidence по роли и модальному ──────────────────────────────
 
 def _params(role: SectionRole, has_modal: bool
@@ -126,10 +148,6 @@ def detect(doc: Document) -> list[Finding]:
                         continue
                     matched_spans.append((s, e))
 
-                    modal_note = (
-                        " Усилено нормативным модальным глаголом."
-                        if has_modal else ""
-                    )
                     findings.append(Finding(
                         defect_id="D001",
                         defect_class="VAGUENESS",
@@ -142,14 +160,36 @@ def detect(doc: Document) -> list[Finding]:
                         evidence_text=m.group(0),
                         evidence_span=(s, e),
                         message=(
-                            f"Расплывчатый термин [{term.category}]: "
-                            f"«{m.group(0)}» — не верифицируем без "
-                            f"измеримого критерия.{modal_note}"
-                        ),
+                            _MSG_RU_MODAL if has_modal else _MSG_RU
+                        ).format(category=term.category, match=m.group(0)),
                         remediation_hint=term.remediation,
                         matched_term=term.lemma,
                         term_category=term.category,
                         section_role=role.value,
+                        # i18n templates (v0.2.0) — static constants,
+                        # selected by modal flag; args are language-neutral
+                        message_templates={
+                            "en": _MSG_EN_MODAL if has_modal else _MSG_EN,
+                            "ru": _MSG_RU_MODAL if has_modal else _MSG_RU,
+                        },
+                        message_args={
+                            "category": term.category,
+                            "match": m.group(0),
+                        },
+                        remediation_templates={
+                            "en": (
+                                "Replace \"{match}\" with a specific,"
+                                " measurable value: {remediation_hint}."
+                            ),
+                            "ru": (
+                                "Замените «{match}» на конкретное,"
+                                " измеримое значение: {remediation_hint}."
+                            ),
+                        },
+                        remediation_args={
+                            "match": m.group(0),
+                            "remediation_hint": term.remediation,
+                        },
                     ))
 
     return findings

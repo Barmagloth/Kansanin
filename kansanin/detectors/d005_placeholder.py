@@ -1,5 +1,5 @@
 # detectors/d005_placeholder.py
-# version: 0.1.1
+# version: 0.2.0
 """
 D005 · PLACEHOLDER — Заглушки и неполные ссылки.
 
@@ -26,6 +26,7 @@ from models.canonical import Document, Finding, Sentence, Severity, Confidence
 class _Pattern:
     regex: re.Pattern[str]
     message_template: str          # {match} будет подставлен
+    message_template_en: str       # {match} English translation
     confidence: Confidence
     note: str = ""
 
@@ -35,32 +36,38 @@ _PATTERNS: list[_Pattern] = [
     _Pattern(
         regex=re.compile(r"\bTBD\b", re.IGNORECASE),
         message_template='Найден маркер заглушки "{match}" — раздел не заполнен.',
+        message_template_en='Placeholder marker "{match}" found — section not filled in.',
         confidence=Confidence.HIGH,
     ),
     _Pattern(
         regex=re.compile(r"\bTBS\b", re.IGNORECASE),
         message_template='Найден маркер "{match}" (To Be Specified) — значение не определено.',
+        message_template_en='Marker "{match}" (To Be Specified) found — value not defined.',
         confidence=Confidence.HIGH,
     ),
     _Pattern(
         regex=re.compile(r"\bTBR\b", re.IGNORECASE),
         message_template='Найден маркер "{match}" (To Be Reviewed) — не прошло проверку.',
+        message_template_en='Marker "{match}" (To Be Reviewed) found — not yet reviewed.',
         confidence=Confidence.HIGH,
     ),
     _Pattern(
         regex=re.compile(r"\bTODO\b", re.IGNORECASE),
         message_template='Найден маркер разработчика "{match}" в тексте требований.',
+        message_template_en='Developer marker "{match}" found in requirement text.',
         confidence=Confidence.HIGH,
     ),
     _Pattern(
         regex=re.compile(r"\bFIXME\b", re.IGNORECASE),
         message_template='Найден маркер "{match}" — незакрытая проблема в тексте.',
+        message_template_en='Marker "{match}" found — unresolved issue in text.',
         confidence=Confidence.HIGH,
     ),
     # ── пустые / очевидные placeholder-скобки ─────────────────────────────
     _Pattern(
         regex=re.compile(r"\[\s*\?\s*\]|\[\s*…\s*\]|\[\s*\.\.\.\s*\]|\[\s*\]"),
         message_template='Пустой placeholder "{match}" — значение не подставлено.',
+        message_template_en='Empty placeholder "{match}" — value not substituted.',
         confidence=Confidence.HIGH,
     ),
     # ── русские маркеры ───────────────────────────────────────────────────
@@ -71,6 +78,7 @@ _PATTERNS: list[_Pattern] = [
             re.IGNORECASE,
         ),
         message_template='Незакрытый placeholder: "{match}".',
+        message_template_en='Unresolved placeholder: "{match}".',
         confidence=Confidence.HIGH,
     ),
     # ── английские маркеры ────────────────────────────────────────────────
@@ -81,6 +89,7 @@ _PATTERNS: list[_Pattern] = [
             re.IGNORECASE,
         ),
         message_template='Незакрытый placeholder: "{match}".',
+        message_template_en='Unresolved placeholder: "{match}".',
         confidence=Confidence.HIGH,
     ),
     # ── literal-ссылки на несуществующие разделы ──────────────────────────
@@ -92,6 +101,7 @@ _PATTERNS: list[_Pattern] = [
             re.IGNORECASE,
         ),
         message_template='Ссылка на placeholder-раздел: "{match}" — скорее всего, номер не проставлен.',
+        message_template_en='Reference to placeholder section: "{match}" — section number likely not filled in.',
         confidence=Confidence.MEDIUM,
         note="Требует проверки: возможно, это реальный номер.",
     ),
@@ -101,6 +111,7 @@ _PATTERNS: list[_Pattern] = [
             re.IGNORECASE,
         ),
         message_template='Reference to placeholder section: "{match}" — number not filled in.',
+        message_template_en='Reference to placeholder section: "{match}" — number not filled in.',
         confidence=Confidence.MEDIUM,
         note="Verify: may be a real section number in some notations.",
     ),
@@ -149,6 +160,24 @@ def detect(doc: Document) -> list[Finding]:
                         evidence_span=(m.start(), m.end()),
                         message=pat.message_template.format(match=m.group(0)),
                         remediation_hint=_REMEDIATION,
+                        message_templates={
+                            "en": pat.message_template_en,
+                            "ru": pat.message_template,
+                        },
+                        message_args={"match": m.group(0)},
+                        remediation_templates={
+                            "en": (
+                                "Fill in before document finalization. ISO 29148 prohibits TBD "
+                                "in final specifications. If the information is unavailable, "
+                                "record the responsible party and the deadline for obtaining it."
+                            ),
+                            "ru": (
+                                "Заполнить до финализации документа. ISO 29148 запрещает TBD в финальной "
+                                "спецификации. Если информация недоступна — зафиксировать ответственного "
+                                "и срок получения."
+                            ),
+                        },
+                        remediation_args={},
                     ))
 
     return findings

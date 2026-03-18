@@ -1,5 +1,5 @@
 # detectors/d009_composite_requirements.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D009 · COMPOSITE_REQUIREMENT — Составное требование.
 
@@ -261,4 +261,28 @@ def _make_finding(
         matched_term=None,
         term_category=pattern_name,
         section_role=role.value if role else None,
+        message_templates={
+            "en": (
+                "Composite requirement: multiple verb obligations in a single sentence "
+                "(pattern: {pattern_name}). Hinders traceability and verification."
+            ),
+            "ru": (
+                "Составное требование: несколько глагольных обязательств в одном предложении "
+                "(паттерн: {pattern_name}). Затрудняет трассировку и верификацию."
+            ),
+        },
+        message_args={"pattern_name": pattern_name},
+        remediation_templates={
+            "en": (
+                "Split composite requirement into separate atomic statements. "
+                "Each requirement should have one modal verb and one verifiable condition. "
+                "IEEE 830: 'Each requirement shall be individually verifiable'."
+            ),
+            "ru": (
+                "Разбить составное требование на отдельные атомарные требования. "
+                "Каждое требование — одно предложение с одним модальным глаголом. "
+                "IEEE 830: «Each requirement shall be individually verifiable»."
+            ),
+        },
+        remediation_args={},
     )

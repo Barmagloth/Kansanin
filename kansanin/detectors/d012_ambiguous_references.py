@@ -1,5 +1,5 @@
 # detectors/d012_ambiguous_references.py
-# version: 0.2.0
+# version: 0.3.0
 """
 D012 · AMBIGUOUS_REFERENCE — Неоднозначная ссылка (местоимение).
 
@@ -441,7 +441,17 @@ def detect(doc: Document) -> list[Finding]:
                         sent.start_offset + match.end(),
                     ),
                     message=msg,
+                    message_templates={
+                        "en": "Pronoun '{pronoun}' is ambiguous: {noun_count} candidate nouns in context. Replace with the specific noun.",
+                        "ru": "Местоимение «{pronoun}» неоднозначно: в контексте {noun_count} кандидатов-существительных. Замените на конкретное имя.",
+                    },
+                    message_args={"pronoun": pronoun, "noun_count": str(noun_count)},
                     remediation_hint=remediation,
+                    remediation_templates={
+                        "en": _REMEDIATION_EN,
+                        "ru": _REMEDIATION_RU,
+                    },
+                    remediation_args={},
                     matched_term=pronoun,
                     term_category="pronoun",
                     section_role=role.value if role else None,

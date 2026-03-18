@@ -1,5 +1,5 @@
 # detectors/d013_contradiction.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D013 · CONTRADICTION — Противоречие между требованиями.
 
@@ -130,6 +130,7 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
         pos_sec = sec_a if not neg_a else sec_b
         neg_sec = sec_b if not neg_a else sec_a
 
+        shared_str = ", ".join(sorted(shared))
         findings.append(Finding(
             defect_id="D013",
             defect_class="CONTRADICTION",
@@ -148,11 +149,27 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                 f"(секция «{pos_sec.heading}»). "
                 f"Общие понятия: {', '.join(sorted(shared))}."
             ),
+            message_templates={
+                "en": "Contradiction: \"{neg_statement}\" (section \"{neg_section}\") contradicts \"{pos_statement}\" (section \"{pos_section}\"). Shared concepts: {shared_concepts}.",
+                "ru": "Противоречие: «{neg_statement}» (секция «{neg_section}») противоречит «{pos_statement}» (секция «{pos_section}»). Общие понятия: {shared_concepts}.",
+            },
+            message_args={
+                "neg_statement": neg_sent.text.strip(),
+                "neg_section": neg_sec.heading,
+                "pos_statement": pos_sent.text.strip(),
+                "pos_section": pos_sec.heading,
+                "shared_concepts": shared_str,
+            },
             remediation_hint=(
                 "Устраните противоречие между требованиями: "
                 "убедитесь, что оба утверждения согласованы, "
                 "или удалите одно из них."
             ),
+            remediation_templates={
+                "en": "Resolve the contradiction between requirements: ensure both statements are consistent, or remove one of them.",
+                "ru": "Устраните противоречие между требованиями: убедитесь, что оба утверждения согласованы, или удалите одно из них.",
+            },
+            remediation_args={},
             matched_term=None,
             term_category=None,
             section_role=None,
@@ -253,11 +270,25 @@ def _detect_llm(doc: Document, provider) -> list[Finding]:
                 f"Противоречие: «{statement_a}» vs «{statement_b}». "
                 f"{explanation}"
             ),
+            message_templates={
+                "en": "Contradiction: \"{statement_a}\" vs \"{statement_b}\". {explanation}",
+                "ru": "Противоречие: «{statement_a}» vs «{statement_b}». {explanation}",
+            },
+            message_args={
+                "statement_a": statement_a,
+                "statement_b": statement_b,
+                "explanation": explanation,
+            },
             remediation_hint=(
                 "Устраните противоречие между требованиями: "
                 "убедитесь, что оба утверждения согласованы, "
                 "или удалите одно из них."
             ),
+            remediation_templates={
+                "en": "Resolve the contradiction between requirements: ensure both statements are consistent, or remove one of them.",
+                "ru": "Устраните противоречие между требованиями: убедитесь, что оба утверждения согласованы, или удалите одно из них.",
+            },
+            remediation_args={},
             matched_term=None,
             term_category=None,
             section_role=None,

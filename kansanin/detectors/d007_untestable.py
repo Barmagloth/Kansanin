@@ -1,5 +1,5 @@
 # detectors/d007_untestable.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D007 · UNTESTABLE_REQUIREMENT — Нетестируемое требование.
 
@@ -236,4 +236,29 @@ def _make_finding(
         matched_term=evidence,
         term_category=pattern_name,
         section_role=role.value if role else None,
+        message_templates={
+            "en": (
+                "Untestable requirement: wording \"{evidence}\" lacks measurable "
+                "criteria (pattern: {pattern_name}). Cannot be verified."
+            ),
+            "ru": (
+                "Нетестируемое требование: формулировка «{evidence}» не содержит "
+                "измеримых критериев (паттерн: {pattern_name}). "
+                "Невозможно верифицировать."
+            ),
+        },
+        message_args={"evidence": evidence, "pattern_name": pattern_name},
+        remediation_templates={
+            "en": (
+                "Replace subjective/unmeasurable language with specific, measurable criteria. "
+                "Each requirement must include a quantitative acceptance threshold. "
+                "ISO 29148: 'Each requirement shall be verifiable'."
+            ),
+            "ru": (
+                "Заменить субъективные/неизмеримые формулировки конкретными метриками. "
+                "Каждое требование должно содержать числовой критерий приёмки. "
+                "ISO 29148: «Each requirement shall be verifiable»."
+            ),
+        },
+        remediation_args={},
     )

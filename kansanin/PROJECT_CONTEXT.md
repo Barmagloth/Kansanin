@@ -258,6 +258,9 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 - C-6: уточнить heading heuristics — «ключевые принципы» → explanatory
 - C-8: поддержать нумерованные секции без `#` при ингесте
 
+**Архитектурный долг — LLM i18n (Tier 3 детекторы):**
+- D013, D015, D016, D017: поле `explanation`/`suggestion` в `message_args` содержит текст на языке LLM-промпта. При рендере шаблона на другом языке — language mixing. Варианты решения: двойной промпт (EN+RU), пост-перевод через LLM, или оставить как есть с пометкой "(EN)" в UI.
+
 **Следующий детектор-кандидат:**
 - D010 Readability / complexity (мягкий quality layer)
 - D012 v2: улучшенная RU noun extraction, coreference heuristics

@@ -1,5 +1,5 @@
 # detectors/d015_implementation_bias.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D015 · IMPLEMENTATION_BIAS — Привязка к реализации в требованиях.
 
@@ -169,6 +169,22 @@ def _category_label(category: str) -> str:
     return labels.get(category, category)
 
 
+def _category_label_en(category: str) -> str:
+    labels = {
+        "database": "database",
+        "language": "programming language",
+        "framework": "framework",
+        "protocol": "protocol",
+        "cloud": "cloud service",
+        "message_queue": "message queue",
+        "infrastructure": "infrastructure tool",
+        "file_path": "file path",
+        "port": "port number",
+        "ip_address": "IP address",
+    }
+    return labels.get(category, category)
+
+
 def _is_normative_section(heading: str) -> bool:
     role = classify_heading(heading)
     return role == SectionRole.NORMATIVE or role == SectionRole.UNKNOWN
@@ -203,6 +219,9 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
             for pattern, term_display, category in _COMPILED_TECH:
                 m = pattern.search(text)
                 if m:
+                    cat_label_ru = _category_label(category)
+                    cat_label_en = _category_label_en(category)
+                    matched = m.group(0)
                     findings.append(Finding(
                         defect_id="D015",
                         defect_class="IMPLEMENTATION_BIAS",
@@ -212,20 +231,30 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                         section_id=section.id,
                         section_heading=section.heading,
                         sentence_id=sentence.id,
-                        evidence_text=m.group(0),
+                        evidence_text=matched,
                         evidence_span=(m.start(), m.end()),
                         message=(
                             f"Привязка к реализации: требование предписывает "
-                            f"конкретную технологию ({_category_label(category)}: "
-                            f"'{m.group(0)}'). Требование должно описывать "
+                            f"конкретную технологию ({cat_label_ru}: "
+                            f"'{matched}'). Требование должно описывать "
                             f"желаемый результат, а не способ реализации."
                         ),
+                        message_templates={
+                            "en": f"Implementation bias: requirement prescribes a specific technology ({cat_label_en}: '{{matched}}'). The requirement should describe the desired outcome, not the implementation approach.",
+                            "ru": f"Привязка к реализации: требование предписывает конкретную технологию ({cat_label_ru}: '{{matched}}'). Требование должно описывать желаемый результат, а не способ реализации.",
+                        },
+                        message_args={"matched": matched},
                         remediation_hint=(
                             "Переформулируйте требование в терминах результата: "
                             "вместо указания конкретной технологии опишите "
                             "функциональные или качественные характеристики."
                         ),
-                        matched_term=m.group(0),
+                        remediation_templates={
+                            "en": "Rewrite the requirement in terms of the desired outcome: instead of specifying a particular technology, describe functional or quality characteristics.",
+                            "ru": "Переформулируйте требование в терминах результата: вместо указания конкретной технологии опишите функциональные или качественные характеристики.",
+                        },
+                        remediation_args={},
+                        matched_term=matched,
                         term_category=category,
                         section_role=None,
                     ))
@@ -233,6 +262,7 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
             # Check file paths
             m = _PATH_PATTERN.search(text)
             if m:
+                matched_path = m.group(0)
                 findings.append(Finding(
                     defect_id="D015",
                     defect_class="IMPLEMENTATION_BIAS",
@@ -242,19 +272,29 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                     section_id=section.id,
                     section_heading=section.heading,
                     sentence_id=sentence.id,
-                    evidence_text=m.group(0),
+                    evidence_text=matched_path,
                     evidence_span=(m.start(), m.end()),
                     message=(
                         f"Привязка к реализации: требование указывает "
-                        f"конкретный путь к файлу ('{m.group(0)}'). "
+                        f"конкретный путь к файлу ('{matched_path}'). "
                         f"Требование должно описывать желаемый результат."
                     ),
+                    message_templates={
+                        "en": "Implementation bias: requirement specifies a concrete file path ('{matched}'). The requirement should describe the desired outcome.",
+                        "ru": "Привязка к реализации: требование указывает конкретный путь к файлу ('{matched}'). Требование должно описывать желаемый результат.",
+                    },
+                    message_args={"matched": matched_path},
                     remediation_hint=(
                         "Переформулируйте требование в терминах результата: "
                         "вместо указания конкретного пути опишите "
                         "требования к хранению данных абстрактно."
                     ),
-                    matched_term=m.group(0),
+                    remediation_templates={
+                        "en": "Rewrite the requirement in terms of the desired outcome: instead of specifying a concrete path, describe data storage requirements abstractly.",
+                        "ru": "Переформулируйте требование в терминах результата: вместо указания конкретного пути опишите требования к хранению данных абстрактно.",
+                    },
+                    remediation_args={},
+                    matched_term=matched_path,
                     term_category="file_path",
                     section_role=None,
                 ))
@@ -262,6 +302,7 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
             # Check port numbers
             m = _PORT_PATTERN.search(text)
             if m:
+                matched_port = m.group(0)
                 findings.append(Finding(
                     defect_id="D015",
                     defect_class="IMPLEMENTATION_BIAS",
@@ -271,19 +312,29 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                     section_id=section.id,
                     section_heading=section.heading,
                     sentence_id=sentence.id,
-                    evidence_text=m.group(0),
+                    evidence_text=matched_port,
                     evidence_span=(m.start(), m.end()),
                     message=(
                         f"Привязка к реализации: требование указывает "
-                        f"конкретный номер порта ('{m.group(0)}'). "
+                        f"конкретный номер порта ('{matched_port}'). "
                         f"Требование должно описывать желаемый результат."
                     ),
+                    message_templates={
+                        "en": "Implementation bias: requirement specifies a concrete port number ('{matched}'). The requirement should describe the desired outcome.",
+                        "ru": "Привязка к реализации: требование указывает конкретный номер порта ('{matched}'). Требование должно описывать желаемый результат.",
+                    },
+                    message_args={"matched": matched_port},
                     remediation_hint=(
                         "Переформулируйте требование в терминах результата: "
                         "вместо указания конкретного порта опишите "
                         "требования к сетевому взаимодействию абстрактно."
                     ),
-                    matched_term=m.group(0),
+                    remediation_templates={
+                        "en": "Rewrite the requirement in terms of the desired outcome: instead of specifying a concrete port, describe network interaction requirements abstractly.",
+                        "ru": "Переформулируйте требование в терминах результата: вместо указания конкретного порта опишите требования к сетевому взаимодействию абстрактно.",
+                    },
+                    remediation_args={},
+                    matched_term=matched_port,
                     term_category="port",
                     section_role=None,
                 ))
@@ -291,6 +342,7 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
             # Check IP addresses
             m = _IP_PATTERN.search(text)
             if m:
+                matched_ip = m.group(0)
                 findings.append(Finding(
                     defect_id="D015",
                     defect_class="IMPLEMENTATION_BIAS",
@@ -300,19 +352,29 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                     section_id=section.id,
                     section_heading=section.heading,
                     sentence_id=sentence.id,
-                    evidence_text=m.group(0),
+                    evidence_text=matched_ip,
                     evidence_span=(m.start(), m.end()),
                     message=(
                         f"Привязка к реализации: требование указывает "
-                        f"конкретный IP-адрес ('{m.group(0)}'). "
+                        f"конкретный IP-адрес ('{matched_ip}'). "
                         f"Требование должно описывать желаемый результат."
                     ),
+                    message_templates={
+                        "en": "Implementation bias: requirement specifies a concrete IP address ('{matched}'). The requirement should describe the desired outcome.",
+                        "ru": "Привязка к реализации: требование указывает конкретный IP-адрес ('{matched}'). Требование должно описывать желаемый результат.",
+                    },
+                    message_args={"matched": matched_ip},
                     remediation_hint=(
                         "Переформулируйте требование в терминах результата: "
                         "вместо указания конкретного IP-адреса опишите "
                         "требования к сетевому взаимодействию абстрактно."
                     ),
-                    matched_term=m.group(0),
+                    remediation_templates={
+                        "en": "Rewrite the requirement in terms of the desired outcome: instead of specifying a concrete IP address, describe network interaction requirements abstractly.",
+                        "ru": "Переформулируйте требование в терминах результата: вместо указания конкретного IP-адреса опишите требования к сетевому взаимодействию абстрактно.",
+                    },
+                    remediation_args={},
+                    matched_term=matched_ip,
                     term_category="ip_address",
                     section_role=None,
                 ))
@@ -426,11 +488,21 @@ def _detect_llm(doc: Document, provider) -> list[Finding]:
             message=(
                 f"Привязка к реализации: '{technology}'. {suggestion}"
             ),
+            message_templates={
+                "en": "Implementation bias: '{technology}'. {suggestion}",
+                "ru": "Привязка к реализации: '{technology}'. {suggestion}",
+            },
+            message_args={"technology": technology, "suggestion": suggestion},
             remediation_hint=(
                 "Переформулируйте требование в терминах результата: "
                 "вместо указания конкретной технологии опишите "
                 "функциональные или качественные характеристики."
             ),
+            remediation_templates={
+                "en": "Rewrite the requirement in terms of the desired outcome: instead of specifying a particular technology, describe functional or quality characteristics.",
+                "ru": "Переформулируйте требование в терминах результата: вместо указания конкретной технологии опишите функциональные или качественные характеристики.",
+            },
+            remediation_args={},
             matched_term=technology,
             term_category="implementation_bias",
             section_role=None,

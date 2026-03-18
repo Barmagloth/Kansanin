@@ -1,5 +1,5 @@
 # detectors/d018_adr_antipatterns.py
-# version: 0.2.0
+# version: 0.4.0
 """
 D018 · ADR_ANTIPATTERN — Структурные антипаттерны в ADR.
 
@@ -9,17 +9,24 @@ Tier: 1.5 (структурные проверки + лёгкие текстов
 характерных секций (Decision, Context, Alternatives и т.д.) или
 по паттерну заголовка (ADR-NNN).
 
-Антипаттерны v1:
+Антипаттерны:
   D018.1 MISSING_ALTERNATIVES   — нет секции Alternatives/Options/Positions
   D018.2 MISSING_CONSEQUENCES   — нет секции Consequences/Implications/Trade-offs
   D018.3 MISSING_RATIONALE      — нет секции Rationale/Argument + нет «because»/«потому что»
-  D018.4 THIN_SECTION           — секция слишком коротка (<30 символов body)
+  D018.4 THIN_SECTION           — секция слишком коротка (<50 символов body)
   D018.5 OUTCOME_ONLY           — есть Decision, но нет Context
+  D018.6 LAZY_ALTERNATIVES      — секция Alternatives есть, но содержит только generic фразы (v0.3.0)
+                                  + expanded patterns & cross-ADR severity lowering (v0.4.0)
 
 НЕ проверяем:
   - semantic quality аргументации
   - cross-document traceability
   - противоречия между ADR и архитектурными документами
+
+v0.4.0 changes:
+  - Expanded LAZY_ALTERNATIVES patterns (EN + RU)
+  - Cross-ADR check: ADR-\\d+ reference in section -> severity LOW
+  - i18n templates (dict approach) on ALL Finding constructions
 """
 from __future__ import annotations
 import re
@@ -65,14 +72,39 @@ _RATIONALE_MARKERS = re.compile(
     re.IGNORECASE,
 )
 
-# Маркеры ленивых альтернатив
+# Маркеры ленивых альтернатив (v0.4.0: expanded EN + RU)
 _LAZY_ALTERNATIVES = re.compile(
-    r"(?:other\s+options\s+were\s+considered|"
+    r"(?:"
+    # v0.3.0 original EN patterns
+    r"\bother\s+options\s+were\s+considered|"
     r"we\s+(?:also\s+)?(?:evaluated|considered)\s+(?:several|other|some)\b|"
+    # v0.4.0 expanded EN
+    r"\bor\s+equivalent\b|"
+    r"\bor\s+similar\b|"
+    r"\band/or\b|"
+    r"\betc\.|"
+    r"\band\s+so\s+on\b|"
+    r"\bamong\s+others\b|"
+    r"\bsuch\s+as\s+\S+(?:\s+\S+){0,5}\s+or\b|"
+    r"\blike\s+\S+(?:\s+\S+){0,5}\s+or\b|"
+    # v0.3.0 original RU patterns
     r"рассматривались?\s+(?:другие|прочие|различные)\s+варианты|"
-    r"были?\s+рассмотрены?\s+альтернатив)",
+    r"были?\s+рассмотрены?\s+альтернатив|"
+    # v0.4.0 expanded RU
+    r"\bили\s+аналог\w*\b|"
+    r"\bили\s+эквивалент\w*\b|"
+    r"\bи/или\b|"
+    r"\bи\s+т\.д\.|"
+    r"\bи\s+т\.п\.|"
+    r"\bи\s+тому\s+подобное\b|"
+    r"\bи\s+прочее\b|"
+    r"\bили\s+подобн\w*\b"
+    r")",
     re.IGNORECASE,
 )
+
+# Cross-ADR reference pattern: presence of ADR-\d+ in section text
+_ADR_REF_RE = re.compile(r"\bADR-\d+\b", re.IGNORECASE)
 
 
 # ── Section classification ────────────────────────────────────────────────────
@@ -184,6 +216,7 @@ def detect(doc: Document) -> list[Finding]:
         findings.append(_structural_finding(
             doc, anchor,
             subtype="MISSING_ALTERNATIVES",
+            defect_id="D018.1",
             message=(
                 "ADR не содержит секции Alternatives / Options / Positions. "
                 "Без рассмотрения альтернатив решение невозможно верифицировать."
@@ -194,6 +227,16 @@ def detect(doc: Document) -> list[Finding]:
             ),
             severity=Severity.HIGH,
             confidence=Confidence.HIGH,
+            message_templates={
+                "en": "ADR does not contain an Alternatives / Options / Positions section. Without considering alternatives, the decision cannot be verified.",
+                "ru": "ADR не содержит секции Alternatives / Options / Positions. Без рассмотрения альтернатив решение невозможно верифицировать.",
+            },
+            message_args={},
+            remediation_templates={
+                "en": "Add an Alternatives/Options section describing the considered options. For each option: brief description, pros, cons.",
+                "ru": "Добавить секцию Alternatives/Options с описанием рассмотренных вариантов. Для каждого варианта: краткое описание, pros, cons.",
+            },
+            remediation_args={},
         ))
 
     # D018.2 MISSING_CONSEQUENCES
@@ -201,6 +244,7 @@ def detect(doc: Document) -> list[Finding]:
         findings.append(_structural_finding(
             doc, anchor,
             subtype="MISSING_CONSEQUENCES",
+            defect_id="D018.2",
             message=(
                 "ADR не содержит секции Consequences / Implications / Trade-offs. "
                 "Без описания последствий невозможно оценить влияние решения."
@@ -211,6 +255,16 @@ def detect(doc: Document) -> list[Finding]:
             ),
             severity=Severity.HIGH,
             confidence=Confidence.HIGH,
+            message_templates={
+                "en": "ADR does not contain a Consequences / Implications / Trade-offs section. Without describing consequences, the impact of the decision cannot be assessed.",
+                "ru": "ADR не содержит секции Consequences / Implications / Trade-offs. Без описания последствий невозможно оценить влияние решения.",
+            },
+            message_args={},
+            remediation_templates={
+                "en": "Add a Consequences section: what changes, what trade-offs, what risks, what requires additional actions.",
+                "ru": "Добавить секцию Consequences: что меняется, какие trade-offs, какие риски, что потребует дополнительных действий.",
+            },
+            remediation_args={},
         ))
 
     # D018.3 MISSING_RATIONALE
@@ -221,6 +275,7 @@ def detect(doc: Document) -> list[Finding]:
             findings.append(_structural_finding(
                 doc, anchor,
                 subtype="MISSING_RATIONALE",
+                defect_id="D018.3",
                 message=(
                     "ADR содержит Decision, но нет Rationale/Argument "
                     "и нет маркеров обоснования (because, потому что, ...) в тексте. "
@@ -232,6 +287,16 @@ def detect(doc: Document) -> list[Finding]:
                 ),
                 severity=Severity.HIGH,
                 confidence=Confidence.MEDIUM,
+                message_templates={
+                    "en": "ADR contains a Decision but no Rationale/Argument section and no rationale markers (because, since, ...) in the text. Outcome-only ADR without explaining \"why\".",
+                    "ru": "ADR содержит Decision, но нет Rationale/Argument и нет маркеров обоснования (because, потому что, ...) в тексте. Outcome-only ADR без объяснения «почему».",
+                },
+                message_args={},
+                remediation_templates={
+                    "en": "Add a Rationale section or include justification in the Decision: why this option was chosen, which criteria were decisive.",
+                    "ru": "Добавить секцию Rationale или включить обоснование в Decision: почему выбран этот вариант, какие критерии были решающими.",
+                },
+                remediation_args={},
             ))
 
     # D018.5 OUTCOME_ONLY (Decision без Context)
@@ -239,6 +304,7 @@ def detect(doc: Document) -> list[Finding]:
         findings.append(_structural_finding(
             doc, anchor,
             subtype="OUTCOME_ONLY",
+            defect_id="D018.5",
             message=(
                 "ADR содержит Decision, но нет Context / Issue. "
                 "Без контекста непонятно, какую проблему решает это решение."
@@ -249,23 +315,87 @@ def detect(doc: Document) -> list[Finding]:
             ),
             severity=Severity.MEDIUM,
             confidence=Confidence.HIGH,
+            message_templates={
+                "en": "ADR contains a Decision but no Context / Issue section. Without context, it is unclear what problem this decision solves.",
+                "ru": "ADR содержит Decision, но нет Context / Issue. Без контекста непонятно, какую проблему решает это решение.",
+            },
+            message_args={},
+            remediation_templates={
+                "en": "Add a Context/Issue section: what exactly needs to be decided, what constraints exist, what forces are at play.",
+                "ru": "Добавить секцию Context/Issue: что именно нужно решить, какие ограничения, какие forces действуют.",
+            },
+            remediation_args={},
         ))
 
+    # D018.6 LAZY_ALTERNATIVES — generic phrases instead of concrete options
+    if structure.has_alternatives:
+        for sec in structure.alternatives_sections:
+            body = sec.text.strip()
+            match = _LAZY_ALTERNATIVES.search(body)
+            if match:
+                # Check if there are concrete alternatives (bullet points, numbered items)
+                has_concrete = bool(re.search(
+                    r"(?:^|\n)\s*(?:[-*•]|\d+[.)]) ",
+                    body,
+                ))
+                if not has_concrete:
+                    matched_phrase = match.group(0)
+                    # Cross-ADR check: if section references ADR-\d+,
+                    # lower severity to LOW (the ADR documents the flexibility)
+                    has_adr_ref = bool(_ADR_REF_RE.search(body))
+                    lazy_severity = Severity.LOW if has_adr_ref else Severity.MEDIUM
+                    findings.append(Finding(
+                        defect_id="D018.6",
+                        defect_class="ADR_ANTIPATTERN",
+                        severity=lazy_severity,
+                        confidence=Confidence.MEDIUM,
+                        document_path=str(doc.path),
+                        section_id=sec.id,
+                        section_heading=sec.heading,
+                        sentence_id=sec.sentences[0].id if sec.sentences else sec.id,
+                        evidence_text=body[:80] if body else "",
+                        evidence_span=(0, min(len(body), 80)),
+                        message=(
+                            "Секция Alternatives содержит только общие фразы "
+                            "(«рассматривались другие варианты», «we considered other options») "
+                            "без перечисления конкретных альтернатив."
+                        ),
+                        message_templates={
+                            "en": "Alternatives section contains only generic phrases (matched: '{matched_phrase}') without listing concrete alternatives.",
+                            "ru": "Секция Alternatives содержит только общие фразы (совпадение: «{matched_phrase}») без перечисления конкретных альтернатив.",
+                        },
+                        message_args={"matched_phrase": matched_phrase},
+                        remediation_hint=(
+                            "Перечислите конкретные альтернативы: "
+                            "название, краткое описание, pros/cons для каждой."
+                        ),
+                        remediation_templates={
+                            "en": "List specific alternatives: name, brief description, pros/cons for each.",
+                            "ru": "Перечислите конкретные альтернативы: название, краткое описание, pros/cons для каждой.",
+                        },
+                        remediation_args={},
+                        matched_term=matched_phrase,
+                        term_category="lazy_alternatives",
+                        section_role="decision_record",
+                    ))
+
     # D018.4 THIN_SECTION — проверяем ключевые ADR-секции
+    #                       (en_label, ru_label)
     _thin_checks = [
-        (structure.alternatives_sections, "Alternatives/Options"),
-        (structure.consequences_sections, "Consequences/Implications"),
-        (structure.rationale_sections, "Rationale/Argument"),
-        (structure.context_sections, "Context/Issue"),
-        (structure.decision_sections, "Decision"),
+        (structure.alternatives_sections, "Alternatives/Options", "Альтернативы/Варианты"),
+        (structure.consequences_sections, "Consequences/Implications", "Последствия/Импликации"),
+        (structure.rationale_sections, "Rationale/Argument", "Обоснование/Аргументация"),
+        (structure.context_sections, "Context/Issue", "Контекст/Проблема"),
+        (structure.decision_sections, "Decision", "Решение"),
     ]
 
-    for sections, label in _thin_checks:
+    for sections, en_label, ru_label in _thin_checks:
         for sec in sections:
             body = sec.text.strip()
             if 0 < len(body) < _THIN_THRESHOLD:
+                body_len = str(len(body))
                 findings.append(Finding(
-                    defect_id="D018",
+                    defect_id="D018.4",
                     defect_class="ADR_ANTIPATTERN",
                     severity=Severity.MEDIUM,
                     confidence=Confidence.MEDIUM,
@@ -276,13 +406,23 @@ def detect(doc: Document) -> list[Finding]:
                     evidence_text=body[:80] if body else "(empty section)",
                     evidence_span=(0, min(len(body), 80)),
                     message=(
-                        f"Секция «{label}» слишком коротка ({len(body)} символов). "
+                        f"Секция «{ru_label}» слишком коротка ({body_len} символов). "
                         f"Содержимое может быть недостаточным для полноценного ADR."
                     ),
+                    message_templates={
+                        "en": f"Section \"{en_label}\" is too short ({{body_length}} characters). The content may be insufficient for a complete ADR.",
+                        "ru": f"Секция «{ru_label}» слишком коротка ({{body_length}} символов). Содержимое может быть недостаточным для полноценного ADR.",
+                    },
+                    message_args={"body_length": body_len},
                     remediation_hint=(
-                        f"Развернуть секцию {label}. Минимум: 2-3 предложения "
+                        f"Развернуть секцию {ru_label}. Минимум: 2-3 предложения "
                         f"с конкретным содержанием."
                     ),
+                    remediation_templates={
+                        "en": f"Expand the {en_label} section. Minimum: 2-3 sentences with specific content.",
+                        "ru": f"Развернуть секцию {ru_label}. Минимум: 2-3 предложения с конкретным содержанием.",
+                    },
+                    remediation_args={},
                     matched_term=None,
                     term_category="thin_section",
                     section_role="decision_record",
@@ -308,6 +448,11 @@ def _structural_finding(
     hint: str,
     severity: Severity,
     confidence: Confidence,
+    defect_id: str = "D018",
+    message_templates: dict[str, str] | None = None,
+    message_args: dict[str, str] | None = None,
+    remediation_templates: dict[str, str] | None = None,
+    remediation_args: dict[str, str] | None = None,
 ) -> Finding:
     """Создать finding для структурного антипаттерна."""
     if anchor:
@@ -320,7 +465,7 @@ def _structural_finding(
         sentence_id = "__document__"
 
     return Finding(
-        defect_id="D018",
+        defect_id=defect_id,
         defect_class="ADR_ANTIPATTERN",
         severity=severity,
         confidence=confidence,
@@ -331,7 +476,11 @@ def _structural_finding(
         evidence_text=f"[{subtype}]",
         evidence_span=(0, 0),
         message=message,
+        message_templates=message_templates or {},
+        message_args=message_args or {},
         remediation_hint=hint,
+        remediation_templates=remediation_templates or {},
+        remediation_args=remediation_args or {},
         matched_term=None,
         term_category=subtype.lower(),
         section_role="decision_record",

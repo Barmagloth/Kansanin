@@ -1,5 +1,5 @@
 # detectors/d016_terminology.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D016 · TERMINOLOGY_INCONSISTENCY — Несогласованная терминология.
 
@@ -137,10 +137,26 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
                     f"а '{more_frequent_term}' — в других частях документа. "
                     f"Выберите один термин и используйте его единообразно."
                 ),
+                message_templates={
+                    "en": "Inconsistent terminology: '{less_frequent}' is used here, while '{more_frequent}' is used elsewhere in the document. Choose one term and use it consistently.",
+                    "ru": "Несогласованная терминология: '{less_frequent}' используется здесь, а '{more_frequent}' — в других частях документа. Выберите один термин и используйте его единообразно.",
+                },
+                message_args={
+                    "less_frequent": less_frequent_term,
+                    "more_frequent": more_frequent_term,
+                },
                 remediation_hint=(
                     f"Замените '{less_frequent_term}' на "
                     f"'{more_frequent_term}' (или наоборот) для единообразия."
                 ),
+                remediation_templates={
+                    "en": "Replace '{less_frequent}' with '{more_frequent}' (or vice versa) for consistency.",
+                    "ru": "Замените '{less_frequent}' на '{more_frequent}' (или наоборот) для единообразия.",
+                },
+                remediation_args={
+                    "less_frequent": less_frequent_term,
+                    "more_frequent": more_frequent_term,
+                },
                 matched_term=less_frequent_term,
                 term_category="terminology",
                 section_role=None,
@@ -246,10 +262,27 @@ def _detect_llm(doc: Document, provider) -> list[Finding]:
                 f"Несогласованная терминология: "
                 f"'{term_a}' vs '{term_b}'. {explanation}"
             ),
+            message_templates={
+                "en": "Inconsistent terminology: '{term_a}' vs '{term_b}'. {explanation}",
+                "ru": "Несогласованная терминология: '{term_a}' vs '{term_b}'. {explanation}",
+            },
+            message_args={
+                "term_a": term_a,
+                "term_b": term_b,
+                "explanation": explanation,
+            },
             remediation_hint=(
                 f"Выберите один из терминов ('{term_a}' или '{term_b}') "
                 f"и используйте его единообразно во всём документе."
             ),
+            remediation_templates={
+                "en": "Choose one of the terms ('{term_a}' or '{term_b}') and use it consistently throughout the document.",
+                "ru": "Выберите один из терминов ('{term_a}' или '{term_b}') и используйте его единообразно во всём документе.",
+            },
+            remediation_args={
+                "term_a": term_a,
+                "term_b": term_b,
+            },
             matched_term=term_a,
             term_category="terminology",
             section_role=None,

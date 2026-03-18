@@ -1,5 +1,5 @@
 # models/canonical.py
-# version: 0.6.0
+# version: 0.7.0
 """
 Canonical layer — формат-независимая модель документа.
 
@@ -85,3 +85,9 @@ class Finding:
     llm_provider: str | None = None        # "openai", "anthropic", "onnx", etc.
     llm_model: str | None = None           # "gpt-4o", "claude-sonnet-4-20250514", etc.
     llm_confidence_raw: float | None = None  # raw model confidence 0.0–1.0
+    # v0.7.0 — i18n templates (language-agnostic dict approach)
+    # keys = language codes ("en", "ru", "de", …); values = format strings
+    message_templates: dict[str, str] = field(default_factory=dict)
+    message_args: dict[str, str] = field(default_factory=dict)
+    remediation_templates: dict[str, str] = field(default_factory=dict)
+    remediation_args: dict[str, str] = field(default_factory=dict)

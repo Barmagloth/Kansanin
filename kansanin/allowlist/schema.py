@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import datetime
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -163,6 +164,11 @@ def _validate_entry(
         expires_str = str(expires).strip()
         if not _ISO_DATE_RE.match(expires_str):
             err("expires", f"invalid format '{expires}', expected YYYY-MM-DD")
+        else:
+            try:
+                datetime.date.fromisoformat(expires_str)
+            except ValueError:
+                err("expires", f"invalid date '{expires_str}' — not a real calendar date")
 
     # owner — optional, string
     owner = item.get("owner")

@@ -1,5 +1,5 @@
 # detectors/d017_redundancy.py
-# version: 0.1.0
+# version: 0.2.0
 """
 D017 · REDUNDANCY — Дублирующиеся требования.
 
@@ -137,6 +137,9 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
 
         seen.add(pair_key)
 
+        stmt_a_short = sent_a.text[:80]
+        stmt_b_short = sent_b.text[:80]
+        sim_str = f"{sim:.2f}"
         findings.append(Finding(
             defect_id="D017",
             defect_class="REDUNDANCY",
@@ -150,14 +153,30 @@ def _detect_heuristic(doc: Document) -> list[Finding]:
             evidence_span=(0, len(sent_a.text)),
             message=(
                 f"Возможное дублирование требований: "
-                f"«{sent_a.text[:80]}» (секция «{sec_a.heading}») и "
-                f"«{sent_b.text[:80]}» (секция «{sec_b.heading}»). "
-                f"Jaccard similarity: {sim:.2f}."
+                f"«{stmt_a_short}» (секция «{sec_a.heading}») и "
+                f"«{stmt_b_short}» (секция «{sec_b.heading}»). "
+                f"Jaccard similarity: {sim_str}."
             ),
+            message_templates={
+                "en": "Possible requirement duplication: \"{statement_a}\" (section \"{section_a}\") and \"{statement_b}\" (section \"{section_b}\"). Jaccard similarity: {similarity}.",
+                "ru": "Возможное дублирование требований: «{statement_a}» (секция «{section_a}») и «{statement_b}» (секция «{section_b}»). Jaccard similarity: {similarity}.",
+            },
+            message_args={
+                "statement_a": stmt_a_short,
+                "section_a": sec_a.heading,
+                "statement_b": stmt_b_short,
+                "section_b": sec_b.heading,
+                "similarity": sim_str,
+            },
             remediation_hint=(
                 "Устраните дублирование: объедините требования в одно место "
                 "или добавьте явную перекрёстную ссылку."
             ),
+            remediation_templates={
+                "en": "Eliminate duplication: consolidate requirements into a single location or add an explicit cross-reference.",
+                "ru": "Устраните дублирование: объедините требования в одно место или добавьте явную перекрёстную ссылку.",
+            },
+            remediation_args={},
             matched_term=None,
             term_category=None,
             section_role=None,
@@ -244,6 +263,8 @@ def _detect_llm(doc: Document, provider) -> list[Finding]:
             if section_id:
                 break
 
+        stmt_a_short = statement_a[:80]
+        stmt_b_short = statement_b[:80]
         findings.append(Finding(
             defect_id="D017",
             defect_class="REDUNDANCY",
@@ -257,14 +278,30 @@ def _detect_llm(doc: Document, provider) -> list[Finding]:
             evidence_span=(0, len(statement_a)),
             message=(
                 f"Дублирование требований: "
-                f"«{statement_a[:80]}» (секция «{section_a}») и "
-                f"«{statement_b[:80]}» (секция «{section_b}»). "
+                f"«{stmt_a_short}» (секция «{section_a}») и "
+                f"«{stmt_b_short}» (секция «{section_b}»). "
                 f"{explanation}"
             ),
+            message_templates={
+                "en": "Requirement duplication: \"{statement_a}\" (section \"{section_a}\") and \"{statement_b}\" (section \"{section_b}\"). {explanation}",
+                "ru": "Дублирование требований: «{statement_a}» (секция «{section_a}») и «{statement_b}» (секция «{section_b}»). {explanation}",
+            },
+            message_args={
+                "statement_a": stmt_a_short,
+                "section_a": section_a,
+                "statement_b": stmt_b_short,
+                "section_b": section_b,
+                "explanation": explanation,
+            },
             remediation_hint=(
                 "Устраните дублирование: объедините требования в одно место "
                 "или добавьте явную перекрёстную ссылку."
             ),
+            remediation_templates={
+                "en": "Eliminate duplication: consolidate requirements into a single location or add an explicit cross-reference.",
+                "ru": "Устраните дублирование: объедините требования в одно место или добавьте явную перекрёстную ссылку.",
+            },
+            remediation_args={},
             matched_term=None,
             term_category=None,
             section_role=None,
