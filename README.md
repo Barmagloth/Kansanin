@@ -23,14 +23,15 @@ Kansanin treats engineering documents as implementation contracts, not prose. It
 | **D007** UNTESTABLE | Untestable/unmeasurable requirements |
 | **D008** PASSIVE_WITHOUT_AGENT | "shall be implemented" without saying by whom |
 | **D009** COMPOSITE_REQUIREMENT | Multiple obligations packed into one sentence |
+| **D011** MISSING_TRACE | Normative sections without traceability references (REQ/ADR/issue) |
 | **D012** AMBIGUOUS_REFERENCE | Pronouns with 2+ possible antecedents in normative context |
-| **D018** ADR_ANTIPATTERN | Missing alternatives, rationale, consequences; thin sections |
+| **D018** ADR_ANTIPATTERN | Missing alternatives, rationale, consequences; lazy alternatives; thin sections (D018.1–D018.6) |
 
 ### Tier 2 — NLP (opt-in, `--nlp`)
 
 | Detector | What it catches |
 |----------|----------------|
-| **D010** READABILITY | Flesch score, sentence complexity metrics |
+| **D010** READABILITY | Sentence length (EN/RU thresholds), section complexity, Flesch-Kincaid grade |
 
 ### Tier 3 — LLM (opt-in, `--llm`)
 

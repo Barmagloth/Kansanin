@@ -5,6 +5,39 @@
 
 ---
 
+## [0.20.0] — 2026-03-18
+
+### Added — i18n system, new detectors, allowlist improvements
+
+- **Dict-based i18n templates**: all 17 detectors now carry `message_templates`, `message_args`, `remediation_templates`, `remediation_args` dicts on every Finding. Language-neutral data in args; templates keyed by lang code (`"en"`, `"ru"`). Adding a new language = adding a key, no dataclass changes.
+- **`i18n.py` render helper** (v0.1.0): `render_message(finding, lang)`, `render_remediation()`, `render_finding()` with fallback chain: requested lang → `"en"` → legacy `message` field. Graceful `KeyError` handling for malformed templates.
+- **D011 MISSING_TRACE** (v0.1.0, Tier 1): detects normative sections lacking traceability references (REQ-nnn, ADR-nnn, JIRA-style, `#nn+`). Scoped to normative + decision_record roles. One finding per section. RFC 2119 keywords: shall, must, required (EN) + должен/необходимо/обязан (RU).
+- **AL-3 review tooling** (`allowlist/review.py` v0.1.0): `review_allowlist()` returns `AllowlistReport` with per-entry match data, expired/unused flags. `format_report(lang)` bilingual output. 12 tests.
+- **`allowlist/report.py`** (v0.2.0): CLI wrapper rewritten to delegate to `review.py`. All 17 detectors in default list. `--lang` flag. Supports `.md/.txt/.rst/.adoc/.asciidoc`.
+- **D018 sub-check IDs**: D018.1 (MISSING_ALTERNATIVES) through D018.6 (LAZY_ALTERNATIVES) — each Finding now has a distinct `defect_id` for granular filtering and allowlist targeting.
+- **Fixtures**: `d010/tc6_russian_thresholds.md`, `d010/tc7_flesch_kincaid.md`, `d011/tc1_missing_trace.md`, `d011/tc2_has_trace.md`, `d018/tc11_lazy_with_adr_ref.md`, `d018/tc12_lazy_expanded_patterns.md`.
+
+### Changed
+
+- **`models/canonical.py`** (v0.7.0): Finding dataclass gains 4 dict fields for i18n. `dict[str, str]` with `default_factory=dict` — fully backward compatible.
+- **D010 readability** (v0.2.0): Russian-specific thresholds (40-word sentences vs 50 EN), Flesch-Kincaid D010.3 (textstat, EN-only, normative), `_detect_language()` counts only alpha chars.
+- **D018 ADR antipatterns** (v0.4.0): 16 new lazy-alternative patterns (EN+RU), cross-ADR severity lowering (ADR-nnn ref → LOW), RU section labels in D018.4 templates.
+- **AL-2 expires**: `_is_expired()` extracted as shared utility, used by both `engine.py` and `review.py`. `Allowlist.all_entries()` public API replaces private attr access.
+- **`allowlist/schema.py`**: defect_id regex accepts sub-IDs (`D018.3`). Semantic date validation via `datetime.date.fromisoformat()` rejects impossible dates (month 13).
+- **`allowlist/engine.py`** (v0.3.0): `filter_findings()` no longer creates duplicate `SuppressionTrace`. Shared `_is_expired()`.
+- **`web/server.py`**: D011 + D018.1–D018.6 added to `_DETECTOR_META`, `_REMEDIATION_I18N`, `_DESCRIPTION_I18N`. Base-ID fallback in enrichment functions (D018.3 → D018).
+- **D015 implementation_bias**: `_category_label_en()` for EN templates — Russian labels no longer leak into English messages.
+- **D001 vagueness**: static template constants (`_MSG_EN`, `_MSG_RU`, `_MSG_EN_MODAL`, `_MSG_RU_MODAL`) — templates are cacheable/comparable, no f-string baking.
+
+### Fixed
+
+- D018 regex: `\b` added to `other\s+options` pattern (prevented "another options" false positive).
+- D011: removed `will` from normative patterns (RFC 2119 simple futurity, not mandatory). Added `обязано` (neuter). `#\d+` trace pattern replaced with contextual + standalone `#\d{2,}`.
+- D006: `str(prioritized_count)` in `message_args` (was int, violated `dict[str, str]` type).
+- `i18n.py`: empty-string template respected (explicit `None` check, not `or`).
+
+---
+
 ## [0.19.0] — 2026-03-17
 
 ### Changed — Web Dashboard UX overhaul

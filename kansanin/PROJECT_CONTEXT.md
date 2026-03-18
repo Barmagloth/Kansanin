@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md
 # kansanin — контекст проекта для Cowork-сессий
-# Последнее обновление: 2026-03-17
-# Версия пакета: v0.19.0
+# Последнее обновление: 2026-03-18
+# Версия пакета: v0.20.0
 
 ---
 
@@ -22,7 +22,7 @@ pyproject.toml              # pip-installable, CLI entry point `kansanin` (в к
 kansanin/
 ├── models/
 │   ├── raw.py                 # RawBlock, RawDocument, StructureConfidence (v0.5.0)
-│   └── canonical.py           # Document, Section, Sentence, Finding (v0.6.0)
+│   └── canonical.py           # Document, Section, Sentence, Finding (v0.7.0, i18n dict fields)
 ├── ingest/
 │   ├── base.py                # BaseIngestor Protocol, IngestCapabilities (v0.5.0)
 │   ├── markdown_ingestor.py   # Markdown → RawDocument (v0.5.0)
@@ -32,21 +32,25 @@ kansanin/
 │   ├── sentence_splitter.py   # разбиение на предложения (v0.5.0)
 │   └── suppression.py         # SectionRole, classify_heading (v0.5.0)
 ├── detectors/
-│   ├── d001_vagueness.py      # VAGUENESS (v0.1.1)
+│   ├── d001_vagueness.py      # VAGUENESS (v0.2.0, i18n, static templates)
 │   ├── d001_vague_terms_ru.txt
 │   ├── d001_vague_terms_en.txt
-│   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.1.1)
-│   ├── d003_undefined_acronym.py # UNDEFINED_ACRONYM (v0.1.0)
-│   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.1.1)
-│   ├── d005_placeholder.py   # PLACEHOLDER (v0.1.1)
-│   ├── d006_missing_priority.py # MISSING_PRIORITY (v0.1.0)
-│   ├── d007_untestable_requirement.py # UNTESTABLE_REQUIREMENT (v0.1.0)
-│   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.2.0)
-│   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.1.0)
-│   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.2.0)
-│   ├── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.2.0)
-│   ├── d010_readability.py      # READABILITY_METRIC (v0.1.0, Tier 2 NLP)
-│   └── d016_terminology.py      # TERMINOLOGY_INCONSISTENCY (v0.1.0, Tier 3 LLM + heuristic)
+│   ├── d002_escape_clauses.py # ESCAPE_CLAUSE (v0.2.0, i18n)
+│   ├── d003_undefined_acronym.py # UNDEFINED_ACRONYM (v0.2.0, i18n)
+│   ├── d004_open_ended_lists.py  # OPEN_ENDED_LIST (v0.3.0, i18n)
+│   ├── d005_placeholder.py   # PLACEHOLDER (v0.2.0, i18n, per-pattern EN templates)
+│   ├── d006_missing_priority.py # MISSING_PRIORITY (v0.2.0, i18n)
+│   ├── d007_untestable.py     # UNTESTABLE_REQUIREMENT (v0.2.0, i18n)
+│   ├── d008_passive_voice.py # PASSIVE_WITHOUT_AGENT (v0.3.0, i18n)
+│   ├── d009_composite_requirements.py # COMPOSITE_REQUIREMENT (v0.2.0, i18n)
+│   ├── d010_readability.py      # READABILITY_METRIC (v0.2.0, Tier 2, RU thresholds, FK D010.3, i18n)
+│   ├── d011_missing_trace.py    # MISSING_TRACE (v0.1.0, Tier 1, new)
+│   ├── d012_ambiguous_references.py # AMBIGUOUS_REFERENCE (v0.3.0, i18n)
+│   ├── d013_contradiction.py    # CONTRADICTION (v0.2.0, Tier 3, i18n)
+│   ├── d015_implementation_bias.py  # IMPLEMENTATION_BIAS (v0.2.0, Tier 3, i18n, EN cat labels)
+│   ├── d016_terminology.py      # TERMINOLOGY_INCONSISTENCY (v0.2.0, Tier 3, i18n)
+│   ├── d017_redundancy.py       # REDUNDANCY (v0.2.0, Tier 3, i18n)
+│   └── d018_adr_antipatterns.py  # ADR_ANTIPATTERN (v0.4.0, D018.1-D018.6, lazy alt v2, i18n)
 ├── llm/                           # LLM/NLP subsystem
 │   ├── __init__.py               # availability checks
 │   ├── provider.py               # LLMProvider Protocol + LLMResponse
@@ -55,16 +59,23 @@ kansanin/
 │   ├── util.py                   # chunking, retry, token estimation
 │   ├── providers/                # 5 providers: openai, anthropic, deepseek, onnx, spacy
 │   └── prompts/                  # prompt templates for Tier 3 detectors
+├── i18n.py                    # render_message/render_finding, fallback chain (v0.1.0)
 ├── allowlist/
-│   ├── engine.py              # 3-level allowlist engine (v0.2.0)
-│   ├── schema.py              # schema validation (v0.1.0)
+│   ├── engine.py              # 3-level allowlist engine (v0.3.0, expires, _is_expired, all_entries)
+│   ├── review.py              # AL-3 review tooling: AllowlistReport, format_report (v0.1.0)
+│   ├── report.py              # CLI wrapper for review (v0.2.0, --lang, all 17 detectors)
+│   ├── schema.py              # schema validation (v0.1.0, D018.x sub-IDs, semantic dates)
 │   └── validate_allowlist.py  # CLI validator (v0.1.0)
 ├── web/
-│   ├── server.py              # stdlib HTTP server, 5 endpoints, bilingual i18n enrichment (v0.19.0)
+│   ├── server.py              # stdlib HTTP server, D018.x + D011 meta, base-ID fallback (v0.20.0)
 │   └── static/index.html      # SPA dashboard: findings table, settings panel, locale dropdown, filters
+├── tests/
+│   ├── test_allowlist.py      # 12 tests: expires, roles, schema, scope, filter
+│   ├── test_i18n.py           # 8 tests: render, fallback, KeyError
+│   └── test_allowlist_review.py # 12 tests: review tooling
 ├── section_role_heuristics.yaml  # YAML-конфиг ролей (source of truth)
-├── run_audit.py               # CLI точка входа (v0.19.0)
-├── __init__.py                # __version__ = "0.19.0"
+├── run_audit.py               # CLI точка входа (v0.20.0)
+├── __init__.py                # __version__ = "0.20.0"
 ├── fixtures/
 │   ├── good_placeholders.md
 │   ├── good_escape_clauses.md
@@ -78,8 +89,10 @@ kansanin/
 │   ├── d006/                   # 5 fixture-файлов для D006 missing priority
 │   ├── d007/                   # 6 fixture-файлов для D007 untestable requirement
 │   ├── d008/                   # 6 fixture-файлов для D008 passive voice
+│   ├── d010/                   # tc6_russian_thresholds.md, tc7_flesch_kincaid.md
+│   ├── d011/                   # tc1_missing_trace.md, tc2_has_trace.md
 │   ├── d012/                   # 6 fixture-файлов для D012 ambiguous references
-│   └── d018/                   # 8 fixture-файлов для D018 ADR antipatterns
+│   └── d018/                   # 12 fixture-файлов для D018 ADR antipatterns
 ├── calibration/
 │   ├── calibrate.py           # harness для прогона корпуса + разметки TP/FP
 │   ├── generate_report.py
@@ -134,17 +147,25 @@ python calibration/calibrate.py calibration/corpus/ --report  # отчёт
 ### Эшелон 1.5 — Tier 1.5 (regex + heuristics)
 | ID | Класс | Статус |
 |---|---|---|
-| D008 | PASSIVE_WITHOUT_AGENT | ✅ v0.1.0 (modal + passive + agent detection) |
-| D009 | COMPOSITE_REQUIREMENT | ✅ v0.1.0 (verb heuristics, только normative) |
-| D012 | AMBIGUOUS_REFERENCE | ✅ v0.1.0 (pronoun + noun heuristics, modal escalation) |
-| D018 | ADR_ANTIPATTERN | ✅ v0.1.0 (5 structural checks, dual ADR detection) |
+| D008 | PASSIVE_WITHOUT_AGENT | ✅ v0.3.0 (modal + passive + agent detection, i18n) |
+| D009 | COMPOSITE_REQUIREMENT | ✅ v0.2.0 (verb heuristics, только normative, i18n) |
+| D011 | MISSING_TRACE | ✅ v0.1.0 (normative без REQ/ADR/issue refs, new) |
+| D012 | AMBIGUOUS_REFERENCE | ✅ v0.3.0 (pronoun + noun heuristics, modal escalation, i18n) |
+| D018 | ADR_ANTIPATTERN | ✅ v0.4.0 (D018.1-D018.6, lazy alt v2, cross-ADR, i18n) |
 
-### Эшелон 2 — Tier 2 (NLP) — не начат
-D010 READABILITY, D011 TEMPLATE_NON_CONFORMANCE
+### Эшелон 2 — Tier 2 (NLP)
+| ID | Класс | Статус |
+|---|---|---|
+| D010 | READABILITY | ✅ v0.2.0 (RU thresholds, Flesch-Kincaid D010.3, alpha-only lang detect, i18n) |
 
-### Эшелон 3 — Tier 3 (LLM) — не начат
-D013 CONTRADICTION, D014 INCOMPLETENESS, D015 IMPLEMENTATION_BIAS,
-D016 TERMINOLOGY_INCONSISTENCY, D017 REDUNDANCY
+### Эшелон 3 — Tier 3 (LLM)
+| ID | Класс | Статус |
+|---|---|---|
+| D013 | CONTRADICTION | ✅ v0.2.0 (heuristic + LLM, i18n) |
+| D014 | INCOMPLETENESS | ⬜ не начат |
+| D015 | IMPLEMENTATION_BIAS | ✅ v0.2.0 (heuristic + LLM, EN/RU cat labels, i18n) |
+| D016 | TERMINOLOGY_INCONSISTENCY | ✅ v0.2.0 (heuristic + LLM, i18n) |
+| D017 | REDUNDANCY | ✅ v0.2.0 (heuristic + LLM, i18n) |
 
 ---
 
@@ -163,7 +184,8 @@ D016 TERMINOLOGY_INCONSISTENCY, D017 REDUNDANCY
 
 **Finding fields:** defect_id, defect_class, severity, confidence, document_path,
 section_id, section_heading, sentence_id, evidence_text, evidence_span,
-message, remediation_hint, matched_term, term_category, section_role.
+message, remediation_hint, matched_term, term_category, section_role,
+message_templates (dict), message_args (dict), remediation_templates (dict), remediation_args (dict).
 
 **Section roles (4 класса):**
 - `normative` — требования, ограничения, критерии → D001 severity HIGH
@@ -236,23 +258,26 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 
 ## Что открыто / следующие шаги
 
-**Web Dashboard (v0.19.0, текущее состояние):**
+**Web Dashboard (v0.20.0, текущее состояние):**
 - ✅ SPA: file tree, findings table, severity filters, search, Detail/Source tabs, resizable panels
 - ✅ Locale dropdown (EN/RU), confidence blocks (1–3), instant suppression
 - ✅ Settings panel (⚙): NLP/LLM toggles, LLM config (provider/model/temperature)
 - ✅ Search filter buttons: Line, Confidence, Category, Section Role
-- ✅ Bilingual remediation + description enrichment (server-side i18n tables)
-- ⬜ Мультиязычные описания детекторов — отдельная задача: переработка всех 16 детекторов для полной i18n (динамические message-ы с evidence, не статические description)
-- ⬜ Дополнительные языки интерфейса (сейчас EN/RU)
+- ✅ Bilingual remediation + description enrichment (server-side i18n tables + base-ID fallback)
+- ✅ D018.1-D018.6 sub-check metadata in server.py
+- ✅ Мультиязычные описания детекторов — dict-based i18n на всех 17 детекторах, render_message() helper
+- ⬜ UI: переключить на render_message() вместо серверного enrichment (опционально, текущий fallback работает)
+- ⬜ Дополнительные языки интерфейса (сейчас EN/RU — добавить = добавить ключ в dict)
 - ⬜ Плагины для Jira, Azure DevOps, СТАРТ
 
 **Phase 2 hardening:**
 - D001+D002 cross-detector dedup — «при необходимости» double-hit
 - D004 heading heuristics alignment с `normalize/suppression.py`
 
-**Allowlist iterations (AL-2, AL-3):**
-- AL-2: reason required (enforce), expires support, section-role scoping (уже в engine, нужны тесты)
-- AL-3: review tooling — показать все active entries и где они сработали по корпусу
+**Allowlist (v0.20.0, текущее состояние):**
+- ✅ AL-2: expires enforcement, section-role scoping, semantic date validation, 12 tests
+- ✅ AL-3: review tooling (review.py + report.py CLI), format_report(lang), 12 tests
+- ✅ Public API: `all_entries()`, shared `_is_expired()`, no private attr access
 
 **Pending fixes (низкий приоритет):**
 - C-6: уточнить heading heuristics — «ключевые принципы» → explanatory
@@ -261,10 +286,10 @@ CLI: `--show-suppressed` (trace), `--no-allowlist` (отключить).
 **Архитектурный долг — LLM i18n (Tier 3 детекторы):**
 - D013, D015, D016, D017: поле `explanation`/`suggestion` в `message_args` содержит текст на языке LLM-промпта. При рендере шаблона на другом языке — language mixing. Варианты решения: двойной промпт (EN+RU), пост-перевод через LLM, или оставить как есть с пометкой "(EN)" в UI.
 
-**Следующий детектор-кандидат:**
-- D010 Readability / complexity (мягкий quality layer)
+**Следующие задачи:**
 - D012 v2: улучшенная RU noun extraction, coreference heuristics
-- D018 v2: lazy alternatives markers, cross-ADR checks
+- D014 INCOMPLETENESS: новый детектор (Tier 3)
+- Phase 4 hardening (LLM): token budget, chunking, caching, cost estimation, CI-режим
 
 **Условие входа в Tier 2 (NLP):**
 - Tier-1 precision на реальных доках стабильна
