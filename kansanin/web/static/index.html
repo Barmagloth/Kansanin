@@ -1395,22 +1395,46 @@ function buildDetailHTML(f) {
   html += `<div class="detail-section"><h4>${t('evidence')}</h4>`;
   html += `<pre>${esc(f.evidence_text)}</pre></div>`;
 
-  // Description (locale-aware) + original message
-  const descText = state.locale === 'ru'
-    ? (f.description_ru || f.message)
-    : (f.description_en || f.message);
+  // Description (locale-aware): detector-class description + per-finding message
+  const descStatic = state.locale === 'ru' ? f.description_ru : f.description_en;
+  // Per-finding message: prefer i18n templates, fallback to legacy message
+  let descFinding = '';
+  if (f.message_templates && f.message_templates[state.locale]) {
+    try {
+      descFinding = f.message_templates[state.locale].replace(/\{(\w+)\}/g, (_, k) => (f.message_args && f.message_args[k]) || '');
+    } catch(e) { descFinding = f.message; }
+  } else if (f.message_templates && f.message_templates['en']) {
+    try {
+      descFinding = f.message_templates['en'].replace(/\{(\w+)\}/g, (_, k) => (f.message_args && f.message_args[k]) || '');
+    } catch(e) { descFinding = f.message; }
+  } else {
+    descFinding = f.message || '';
+  }
   html += `<div class="detail-section"><h4>${t('description')}</h4>`;
-  html += `<p>${esc(descText)}</p>`;
-  // Show original detector message as additional detail if it differs
-  if (f.message && f.message !== descText) {
-    html += `<p style="margin-top:6px;font-size:0.85rem;color:var(--pico-muted-color)">${esc(f.message)}</p>`;
+  if (descStatic) {
+    html += `<p>${esc(descStatic)}</p>`;
+  }
+  if (descFinding) {
+    html += `<p style="margin-top:6px;font-size:0.85rem;color:var(--pico-muted-color)">${esc(descFinding)}</p>`;
   }
   html += `</div>`;
 
-  // Remediation
-  const remText = state.locale === 'ru'
-    ? (f.remediation_ru || f.remediation_hint)
-    : (f.remediation_en || f.remediation_hint);
+  // Remediation (locale-aware): prefer i18n templates, fallback to server enrichment, then legacy
+  let remText = '';
+  if (f.remediation_templates && f.remediation_templates[state.locale]) {
+    try {
+      remText = f.remediation_templates[state.locale].replace(/\{(\w+)\}/g, (_, k) => (f.remediation_args && f.remediation_args[k]) || '');
+    } catch(e) { remText = ''; }
+  } else if (f.remediation_templates && f.remediation_templates['en']) {
+    try {
+      remText = f.remediation_templates['en'].replace(/\{(\w+)\}/g, (_, k) => (f.remediation_args && f.remediation_args[k]) || '');
+    } catch(e) { remText = ''; }
+  }
+  if (!remText) {
+    remText = state.locale === 'ru'
+      ? (f.remediation_ru || f.remediation_hint)
+      : (f.remediation_en || f.remediation_hint);
+  }
   if (remText) {
     html += `<div class="detail-section"><h4>${t('remediation')}</h4>`;
     html += `<div class="remediation-box">${esc(remText)}</div></div>`;
