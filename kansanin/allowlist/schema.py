@@ -5,7 +5,7 @@
 
 Строгая валидация:
   - term: обязательное, непустое
-  - defect_id: обязательное, формат D\d{3}
+  - defect_id: обязательное, формат D\\d{3} или D\\d{3}.\\d+
   - reason: обязательное, непустое (AL-2)
   - applies_to_section_roles: если есть — каждая роль из VALID_SECTION_ROLES
   - match_mode: только "exact" (v1)
@@ -31,7 +31,7 @@ VALID_SECTION_ROLES = frozenset({
 
 VALID_MATCH_MODES = frozenset({"exact"})  # v1: only exact
 
-_DEFECT_ID_RE = re.compile(r"^D\d{3}$")
+_DEFECT_ID_RE = re.compile(r"^D\d{3}(\.\d+)?$")
 _ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -124,12 +124,12 @@ def _validate_entry(
     if not term or not isinstance(term, str) or not term.strip():
         err("term", "required, non-empty string")
 
-    # defect_id — required, format D\d{3}
+    # defect_id — required, format D\d{3} or D\d{3}.\d+
     defect_id = item.get("defect_id")
     if not defect_id or not isinstance(defect_id, str):
-        err("defect_id", "required, string format 'D001'")
+        err("defect_id", "required, string format 'D001' or 'D018.1'")
     elif not _DEFECT_ID_RE.match(defect_id.strip()):
-        err("defect_id", f"invalid format '{defect_id}', expected D\\d{{3}} (e.g. D001)")
+        err("defect_id", f"invalid format '{defect_id}', expected D001 or D018.1")
 
     # reason — required (AL-2 ужесточение)
     reason = item.get("reason")

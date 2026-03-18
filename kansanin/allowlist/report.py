@@ -138,7 +138,8 @@ def main():
     for p in args.paths:
         expanded = glob_mod.glob(p)
         if expanded:
-            files.extend(Path(f) for f in expanded if f.endswith(".md"))
+            _DOC_EXTS = (".md", ".txt", ".rst", ".adoc", ".asciidoc")
+            files.extend(Path(f) for f in expanded if f.endswith(_DOC_EXTS))
         else:
             files.append(Path(p))
 
